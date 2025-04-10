@@ -1,0 +1,5 @@
+telethon
+pymongo
+transformers
+torch
+heroku3

@@ -1,4 +1,5 @@
 from telethon import TelegramClient, events
+from telethon.errors import ChatAdminRequiredError
 from telethon.tl.types import PeerChannel, PeerChat
 import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
@@ -43,10 +44,10 @@ async def media_handler(event):
         if nsfw:
             name = event.sender.first_name
             await event.delete()
-            warning_msg = await event.respond(f"**⚠️ ɴꜱꜰᴡ ᴅᴇᴛᴇᴄᴛᴇᴅ**\n{name}")
+            warning_msg = await event.respond(f"**⚠️ ɴꜱꜰᴡ ᴅᴇᴛᴇᴄᴛᴇᴅ**\n{name}", parse_mode="md")
             
             if SPOILER:
-                spoiler_msg = await event.respond(f"|| ʏᴏᴜʀ ᴍᴇᴅɪᴀ ᴡᴀꜱ ʀᴇᴍᴏᴠᴇᴅ !! ||")
+                spoiler_msg = await event.respond("||ʏᴏᴜʀ ᴍᴇᴅɪᴀ ᴡᴀꜱ ʀᴇᴍᴏᴠᴇᴅ!!||", parse_mode="md")
                 await asyncio.sleep(60)
                 await spoiler_msg.delete()
             
@@ -62,8 +63,11 @@ slang_pattern = re.compile(r'\b(' + '|'.join(re.escape(word) for word in slang_w
 @BOT.on(events.NewMessage(pattern=None))
 async def slang(event):
     if event.is_group:
-        sender = await event.client.get_permissions(event.chat_id, event.sender_id)
-        is_admin = sender.is_admin or sender.is_creator
+        try:
+            sender = await event.client.get_permissions(event.chat_id, event.sender_id)
+            is_admin = sender.is_admin or sender.is_creator
+        except ChatAdminRequiredError:
+            is_admin = False
 
         if not is_admin:
             sentence = event.raw_text
@@ -78,5 +82,5 @@ async def slang(event):
 
             if isslang and SPOILER:
                 name = (await event.get_sender()).first_name
-                msgtxt = f"""{name}, ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ ʜᴀꜱ ʙᴇᴇɴ ᴅᴇʟᴇᴛᴇᴅ ᴅᴜᴇ ᴛᴏ ᴛʜᴇ ᴘʀᴇꜱᴇɴᴄᴇ ᴏꜰ ɪɴᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʟᴀɴɢᴜᴀɢᴇ[ɢᴀᴀʟɪ/ꜱʟᴀɴɢꜰᴜʟ ᴡᴏʀᴅꜱ].\n\nʜᴇʀᴇ ɪꜱ ᴀ ᴄᴇɴꜱᴏʀᴇᴅ ᴠᴇʀꜱɪᴏɴ ᴏꜰ ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ:\n\n{sentence}"""
-                await event.reply(msgtxt)
+                msgtxt = f"""{name}, ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ ʜᴀꜱ ʙᴇᴇɴ ᴅᴇʟᴇᴛᴇᴅ ᴅᴜᴇ ᴛᴏ ᴛʜᴇ ᴘʀᴇꜱᴇɴᴄᴇ ᴏꜰ ɪɴᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʟᴀɴɢᴜᴀɢᴇ [ɢᴀᴀʟɪ/ꜱʟᴀɴɢꜰᴜʟ ᴡᴏʀᴅꜱ].\n\nʜᴇʀᴇ ɪꜱ ᴀ ᴄᴇɴꜱᴏʀᴇᴅ ᴠᴇʀꜱɪᴏɴ ᴏꜰ ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ:\n\n{sentence}"""
+                await event.reply(msgtxt, parse_mode="md")

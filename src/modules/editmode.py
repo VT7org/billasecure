@@ -2,7 +2,7 @@ from telethon import events
 from telethon.tl.functions.channels import GetFullChannelRequest
 from telethon.tl.types import PeerChannel, PeerUser
 from pymongo import MongoClient
-from config import MONGO_URI, DB_NAME, OWNER_ID, SUPPORT_ID
+from config import MONGO_URI, DB_NAME, OWNER_ID, SUDO_USERS, SUPPORT_ID
 from config import BOT
 import time
 from src.status import *
@@ -245,7 +245,7 @@ async def sudo_list(event):
 
 from functools import wraps
 from telethon.tl.functions.channels import GetParticipantRequest
-from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
+from telethon.tl.types import PeerUser, ChannelParticipantAdmin, ChannelParticipantCreator
 
 # Decorator to check if user is allowed (admin, sudo, or owner)
 def is_admin(func):

@@ -247,22 +247,24 @@ from functools import wraps
 from telethon.tl.functions.channels import GetParticipantRequest
 from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
 
-# Define the @is_admin decorator
+# Decorator to check if user is allowed (admin, sudo, or owner)
 def is_admin(func):
     @wraps(func)
     async def wrapper(event):
         user = await event.get_sender()
         chat = await event.get_chat()
 
-        # Check if the user is an admin in the group
+        if user.id in SUDO_USERS or user.id == OWNER_ID:
+            return await func(event)
+
         try:
             participant = await BOT(GetParticipantRequest(chat, user))
             if isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator)):
-                await func(event)  # User is an admin, proceed with the command
+                return await func(event)
             else:
-                await event.reply("🚫 Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴀᴅᴍɪɴ ᴘᴇʀᴍɪssɪᴏɴs ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
+                return await event.reply("🚫 Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴀᴅᴍɪɴ ᴘᴇʀᴍɪssɪᴏɴs ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         except Exception as e:
-            await event.reply(f"❌ Fᴀɪʟᴇᴅ ᴛᴏ ᴄʜᴇᴄᴋ ᴀᴅᴍɪɴ sᴛᴀᴛᴜs: {e}")
+            return await event.reply(f"❌ Fᴀɪʟᴇᴅ ᴛᴏ ᴄʜᴇᴄᴋ ᴀᴅᴍɪɴ sᴛᴀᴛᴜs: {e}")
     return wrapper
 
 # Authorize a user in a specific group
@@ -272,28 +274,28 @@ async def auth(event):
     user = await event.get_sender()
     chat = await event.get_chat()
 
-    # Extract the username or user ID from the command
     sudo_user = event.pattern_match.group(1).strip() if event.pattern_match.group(1) else None
 
-    if not sudo_user:
+    if not sudo_user and not event.is_reply:
         await event.reply("Usᴀɢᴇ: /auth <@ᴜsᴇʀɴᴀᴍᴇ> ᴏʀ ʀᴇᴘʟʏ ᴛᴏ ʜɪs/ʜᴇʀ ᴍᴇssᴀɢᴇ.")
         return
 
     try:
-        # Resolve the user ID from username or user ID
-        if sudo_user.startswith('@'):
+        if not sudo_user and event.is_reply:
+            reply = await event.get_reply_message()
+            user_entity = await reply.get_sender()
+            sudo_user_id = user_entity.id
+        elif sudo_user.startswith('@'):
             user_entity = await BOT.get_entity(sudo_user)
             sudo_user_id = user_entity.id
         else:
             sudo_user_id = int(sudo_user)
             user_entity = await BOT.get_entity(PeerUser(sudo_user_id))
 
-        # Check if the user is already authorized in this group
         if authorized_users_collection.find_one({"user_id": sudo_user_id, "group_id": chat.id}):
             await event.reply(f"{user_entity.first_name} ɪs ᴀʟʀᴇᴀᴅʏ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ɪɴ ᴛʜɪs ɢʀᴏᴜᴘ.")
             return
 
-        # Add to the database
         authorized_users_collection.insert_one({
             "user_id": sudo_user_id,
             "username": user_entity.username,
@@ -305,33 +307,34 @@ async def auth(event):
         await event.reply(f"❌ Fᴀɪʟᴇᴅ ᴛᴏ ᴀᴜᴛʜᴏʀɪᴢᴇ ᴜsᴇʀ: {e}")
 
 # Unauthorize a user in a specific group
-@BOT.on(events.NewMessage(pattern='/unauth'))
+@BOT.on(events.NewMessage(pattern='/unauth(?: |$)(.*)'))
 @is_admin
 async def unauth(event):
     user = await event.get_sender()
     chat = await event.get_chat()
 
-    # Check if a username or user ID is provided
-    if not event.pattern_match.group(1):
+    sudo_user = event.pattern_match.group(1).strip() if event.pattern_match.group(1) else None
+
+    if not sudo_user and not event.is_reply:
         await event.reply("Usᴀɢᴇ: /unauth <@ᴜsᴇʀɴᴀᴍᴇ> ᴏʀ ʀᴇᴘʟʏ ᴛᴏ ʜɪs/ʜᴇʀ ᴍᴇssᴀɢᴇ.")
         return
 
-    sudo_user = event.pattern_match.group(1).strip()
-
     try:
-        if sudo_user.startswith('@'):
+        if not sudo_user and event.is_reply:
+            reply = await event.get_reply_message()
+            user_entity = await reply.get_sender()
+            sudo_user_id = user_entity.id
+        elif sudo_user.startswith('@'):
             user_entity = await BOT.get_entity(sudo_user)
             sudo_user_id = user_entity.id
         else:
             sudo_user_id = int(sudo_user)
             user_entity = await BOT.get_entity(PeerUser(sudo_user_id))
 
-        # Check if the user is authorized in this group
         if not authorized_users_collection.find_one({"user_id": sudo_user_id, "group_id": chat.id}):
             await event.reply(f"{user_entity.first_name} ɪs ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ɪɴ ᴛʜɪs ɢʀᴏᴜᴘ.")
             return
 
-        # Remove from the database
         authorized_users_collection.delete_one({"user_id": sudo_user_id, "group_id": chat.id})
         await event.reply(f"✅ {user_entity.first_name} ʜᴀs ʙᴇᴇɴ ᴜɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ ɪɴ ᴛʜɪs ɢʀᴏᴜᴘ.")
     except Exception as e:
@@ -401,7 +404,7 @@ async def list_active_groups(event):
     group_list_msg = "Aᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs ᴡʜᴇʀᴇ ᴛʜᴇ ʙɪʟʟᴀ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ:\n"
     for group in active_groups_from_db:
         group_name = group.get("group_name", "Unknown Group")
-        invite_link = group.get("invite_link", "Nᴏ ɪɴᴠɪᴛᴀᴛɪᴏɴ ᴀᴠᴀɪʟᴀʙʟᴅ")
+        invite_link = group.get("invite_link", "Nᴏ ɪɴᴠɪᴛᴀᴛɪᴏɴ ᴀᴠᴀɪʟᴀʙʟᴇ")
 
         if invite_link != "ɪɴᴠɪᴛᴀᴛᴀᴛɪᴏɴ ᴀᴠᴀɪʟᴀʙʟᴇ":
             group_list_msg += f"- <a href='{invite_link}'>[{group_name}]</a>\n"

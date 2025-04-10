@@ -8,26 +8,26 @@ import logging
 import asyncio
 
 START_OP = [
-    [Button.url("ᴀᴅᴅ ᴍᴇ ↗️", "https://t.me/vxguardian_bot?startgroup=true&admin=delete_messages")],
+    [Button.url("ᴀᴅᴅ ᴍᴇ ↗️", "https://t.me/BillaGuardianBot?startgroup=true&admin=delete_messages")],
     [Button.url("ꜱᴜᴘᴘᴏʀᴛ", "https://t.me/ignite_chatz"), Button.url("ᴄʜᴀɴɴᴇʟ", "https://t.me/BillaSpace")]
 ]
 
 @BOT.on(events.NewMessage(pattern="/start"))
 async def start(event):
-    if event.is_private:
-        KEX = await event.client.get_me()
-        bot_name = KEX.first_name
-        TEXT = f"""
+    KEX = await event.client.get_me()
+    bot_name = KEX.first_name
+    TEXT = f"""
 <b>ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ʙɪʟʟᴀ ɢᴜᴀʀᴅɪᴀɴ ʙᴏᴛ ⚡️</b>
 <b><u>ɪ'ᴍ ʏᴏᴜʀ ɢʀᴏᴜᴘ’ꜱ ꜱʜɪᴇʟᴅ ᴀɢᴀɪɴꜱᴛ ꜱᴘᴀᴍ, ɴsғᴡ ɪᴍᴀɢᴇs, ᴜɴᴡᴀɴᴛᴇᴅ ᴍᴇᴅɪᴀ, ꜱɴᴇᴀᴋʏ ᴍsɢ ᴇᴅɪᴛꜱ & ᴍᴜᴄʜ ᴍᴏʀᴇ ᴜsᴇ /help ᴄᴍᴅ ᴛᴏ ᴋɴᴏᴡ ᴀʟʟ ᴄᴏʀᴇ ғᴜɴᴄᴛɪᴏɴs.</u></b>
 <blockquote><b>• ᴍᴇᴅɪᴀ ɢᴜᴀʀᴅ</b>
-<b>• ᴄᴏɴᴛᴇɴᴛ ꜰɪʟᴛᴇʀ</b>
-<b>• ᴇᴅɪᴛ ᴡᴀᴛᴄʜ</b>
-<b>• ᴀᴜᴛᴏ ᴍᴇᴅɪᴀ ᴅᴇʟᴇᴛɪᴏɴ</b></blockquote>
+<b>• ɴsғᴡ-ᴄᴏɴᴛᴇɴᴛ ꜰɪʟᴛᴇʀ</b>
+<b>• ᴅᴇʟᴇᴛᴇs ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇs</b>
+<b>• ᴅᴇʟᴇᴛᴇs sʟᴀɴɢғᴜʟ/ɢᴀᴀʟɪ ᴡᴏʀᴅs</b>
+<b>• ᴀᴜᴛᴏ ᴍᴇᴅɪᴀ ʀᴇᴍᴏᴠᴀʟ ᴛʜʀᴏᴜɢʜ /setdelay ᴄᴏᴍᴍᴀɴᴅ</b></blockquote>
 <blockquote><b>✅ ᴀᴅᴅ ᴍᴇ ᴀꜱ ᴀɴ ᴀᴅᴍɪɴ ᴛᴏ ᴀᴄᴛɪᴠᴀᴛᴇ ᴘʀᴏᴛᴇᴄᴛɪᴏɴ.</b>
-<b>/help ꜰᴏʀ ᴄᴏᴍᴍᴀɴᴅꜱ</b></blockquote>
+<b>/help ғᴏʀ ᴄᴏᴍᴍᴀɴᴅꜱ</b></blockquote>
 """
-        await event.respond(TEXT, buttons=START_OP, parse_mode='html')
+    await event.reply(TEXT, buttons=START_OP, parse_mode='html')
 
 @BOT.on(events.NewMessage(pattern='/update'))
 async def update_and_restart(event):

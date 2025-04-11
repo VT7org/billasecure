@@ -1,5 +1,5 @@
 from telethon import TelegramClient, events
-from telethon.errors import ChatAdminRequiredError
+from telethon.errors import ChatAdminRequiredError, UserNotParticipantError
 from telethon.tl.types import PeerChannel, PeerChat
 import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
@@ -40,21 +40,25 @@ async def media_handler(event):
     try:
         file_path = await event.download_media()
         nsfw = await check_nsfw_media(file_path)
-        
+
         if nsfw:
             name = event.sender.first_name
-            await event.delete()
+            try:
+                await event.delete()
+            except Exception:
+                pass
             warning_msg = await event.respond(f"**⚠️ ɴꜱꜰᴡ ᴅᴇᴛᴇᴄᴛᴇᴅ**\n{name}", parse_mode="md")
-            
+
             if SPOILER:
                 spoiler_msg = await event.respond("||ʏᴏᴜʀ ᴍᴇᴅɪᴀ ᴡᴀꜱ ʀᴇᴍᴏᴠᴇᴅ!!||", parse_mode="md")
                 await asyncio.sleep(60)
                 await spoiler_msg.delete()
-            
+
             await asyncio.sleep(60)
             await warning_msg.delete()
 
-        os.remove(file_path)
+        if file_path and os.path.exists(file_path):
+            os.remove(file_path)
     except Exception as e:
         print(f"ᴇʀʀᴏʀ: {e}")
 
@@ -66,7 +70,7 @@ async def slang(event):
         try:
             sender = await event.client.get_permissions(event.chat_id, event.sender_id)
             is_admin = sender.is_admin or sender.is_creator
-        except ChatAdminRequiredError:
+        except (ChatAdminRequiredError, UserNotParticipantError):
             is_admin = False
 
         if not is_admin:
@@ -77,10 +81,17 @@ async def slang(event):
             for word in sent.split():
                 if word.lower() in slang_words:
                     isslang = True
-                    await event.delete()
+                    try:
+                        await event.delete()
+                    except Exception:
+                        pass
                     sentence = sentence.replace(word, f'||{word}||')
 
             if isslang and SPOILER:
                 name = (await event.get_sender()).first_name
-                msgtxt = f"""{name}, ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ ʜᴀꜱ ʙᴇᴇɴ ᴅᴇʟᴇᴛᴇᴅ ᴅᴜᴇ ᴛᴏ ᴛʜᴇ ᴘʀᴇꜱᴇɴᴄᴇ ᴏꜰ ɪɴᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʟᴀɴɢᴜᴀɢᴇ [ɢᴀᴀʟɪ/ꜱʟᴀɴɢꜰᴜʟ ᴡᴏʀᴅꜱ].\n\nʜᴇʀᴇ ɪꜱ ᴀ ᴄᴇɴꜱᴏʀᴇᴅ ᴠᴇʀꜱɪᴏɴ ᴏꜰ ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ:\n\n{sentence}"""
+                msgtxt = (
+                    f"{name}, ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ ʜᴀꜱ ʙᴇᴇɴ ᴅᴇʟᴇᴛᴇᴅ ᴅᴜᴇ ᴛᴏ ᴛʜᴇ ᴘʀᴇꜱᴇɴᴄᴇ "
+                    f"ᴏꜰ ɪɴᴀᴘᴘʀᴏᴘʀɪᴀᴛᴇ ʟᴀɴɢᴜᴀɢᴇ [ɢᴀᴀʟɪ/ꜱʟᴀɴɢꜰᴜʟ ᴡᴏʀᴅꜱ].\n\n"
+                    f"ʜᴇʀᴇ ɪꜱ ᴀ ᴄᴇɴꜱᴏʀᴇᴅ ᴠᴇʀꜱɪᴏɴ ᴏꜰ ʏᴏᴜʀ ᴍᴇꜱꜱᴀɢᴇ:\n\n{sentence}"
+                )
                 await event.reply(msgtxt, parse_mode="md")

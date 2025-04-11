@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Load .env variables into environment
-export $(grep -v '^#' .env | xargs)
+# Load .env variables safely
+set -o allexport
+source <(grep -v '^#' .env | grep '=')
+set +o allexport
 
 # Start the bot
 python3 -m main.py

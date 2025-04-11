@@ -4,6 +4,7 @@ from telethon import events
 from telethon.tl.types import ChannelParticipantsAdmins
 from config import BOT
 from src.status import *
+
 MONGO_DB_URI = "mongodb+srv://kunaalkumar0091:6qhyyQIyS2idoGFQ@cluster0.z2jge.mongodb.net/?retryWrites=true&w=majority"
 
 mongo = MongoCli(MONGO_DB_URI).Rankings
@@ -40,7 +41,8 @@ async def impo_on(chat_id: int) -> None:
 async def impo_off(chat_id: int) -> None:
     await impdb.delete_one({"chat_id_toggle": chat_id})
 
-@BOT.on(events.NewMessage(func=lambda e: e.is_group and not e.sender.bot and not e.via_bot_id))
+
+@BOT.on(events.NewMessage(func=lambda e: e.is_group and getattr(e.sender, 'bot', False) is False and e.sender_id and not e.via_bot_id))
 async def chk_usr(event):
     chat_id = event.chat_id
     if event.sender_id is None or not await check_pretender(chat_id):
@@ -70,20 +72,20 @@ async def chk_usr(event):
         and lastname_before != event.sender.last_name
     ):
         changes.append(
-            f"{first_name} {lastname_before} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ғʀᴏᴍ {first_name} {lastname_before} ᴛᴏ {event.sender.first_name} {event.sender.last_name}\n"
+            f"{first_name} {lastname_before} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ɴᴀᴍᴇ ꜰʀᴏᴍ {first_name} {lastname_before} ᴛᴏ {event.sender.first_name} {event.sender.last_name}\n"
         )
     elif first_name != event.sender.first_name:
         changes.append(
-            f"{first_name} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ғɪʀsᴛ ɴᴀᴍᴇ ғʀᴏᴍ {first_name} ᴛᴏ {event.sender.first_name}\n"
+            f"{first_name} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ғɪʀsᴛ ɴᴀᴍᴇ ꜰʀᴏᴍ {first_name} ᴛᴏ {event.sender.first_name}\n"
         )
     elif lastname_before != event.sender.last_name:
         changes.append(
-            f"{lastname_before} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ʟᴀsᴛ ɴᴀᴍᴇ ғʀᴏᴍ {lastname_before} ᴛᴏ {event.sender.last_name}\n"
+            f"{lastname_before} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ʟᴀsᴛ ɴᴀᴍᴇ ꜰʀᴏᴍ {lastname_before} ᴛᴏ {event.sender.last_name}\n"
         )
 
     if usernamebefore != event.sender.username:
         changes.append(
-            f"@{usernamebefore} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ᴜsᴇʀɴᴀᴍᴇ ғʀᴏᴍ @{usernamebefore} �ᴛᴏ @{event.sender.username}\n"
+            f"@{usernamebefore} ʜᴀꜱ ᴄʜᴀɴɢᴇᴅ ᴛʜᴇɪʀ ᴜsᴇʀɴᴀᴍᴇ ꜰʀᴏᴍ @{usernamebefore} ᴛᴏ @{event.sender.username}\n"
         )
 
     if changes:
@@ -98,9 +100,10 @@ async def chk_usr(event):
         event.sender.last_name,
     )
 
+
 @BOT.on(events.NewMessage(pattern=r"/pretender(?: |$)(.*)"))
 @is_admin
-async def set_mataa(event, _s):  # Accept _s argument
+async def set_mataa(event, _s):
     if event.is_group:
         admin_ids = [user.id async for user in BOT.iter_participants(event.chat_id, filter=ChannelParticipantsAdmins)]
         if event.sender_id not in admin_ids:
@@ -112,16 +115,16 @@ async def set_mataa(event, _s):  # Accept _s argument
         if command == "on":
             cekset = await check_pretender(chat_id)
             if cekset:
-                await event.reply(f"ᴘʀᴇᴛᴇɴᴅᴇʀ ɪs ᴀʟʀᴇᴀᴅʏ �ᴇɴᴀʙʟᴇᴅ ғᴏʀ {event.chat.title}")
+                await event.reply(f"ᴘʀᴇᴛᴇɴᴅᴇʀ ɪs ᴀʟʀᴇᴀᴅʏ ᴇɴᴀʙʟᴇᴅ ꜰᴏʀ {event.chat.title}")
             else:
                 await impo_on(chat_id)
-                await event.reply(f"sᴜᴄᴇssғᴜʟʟʏ ᴇɴᴀʙʟᴇᴅ ᴘʀᴇᴛᴇɴᴅᴇʀ ғᴏʀ {event.chat.title}")
+                await event.reply(f"sᴜᴄᴄᴇssꜰᴜʟʟʏ ᴇɴᴀʙʟᴇᴅ ᴘʀᴇᴛᴇɴᴅᴇʀ ꜰᴏʀ {event.chat.title}")
         elif command == "off":
             cekset = await check_pretender(chat_id)
             if not cekset:
-                await event.reply(f"ᴘʀᴇᴛᴇɴᴅᴇʀ ɪs ᴀʟʀᴇᴀᴅʏ ᴅɪsᴀʙʟᴇᴅ ғᴏʀ {event.chat.title}")
+                await event.reply(f"ᴘʀᴇᴛᴇɴᴅᴇʀ ɪs ᴀʟʀᴇᴀᴅʏ ᴅɪsᴀʙʟᴇᴅ ꜰᴏʀ {event.chat.title}")
             else:
                 await impo_off(chat_id)
-                await event.reply(f"sᴜᴄᴇssғᴜʟʟʏ ᴅɪsᴀʙʟᴇᴅ ᴘʀᴇᴛᴇɴᴅᴇʀ ғᴏʀ {event.chat.title}")
+                await event.reply(f"sᴜᴄᴄᴇssꜰᴜʟʟʏ ᴅɪsᴀʙʟᴇᴅ ᴘʀᴇᴛᴇɴᴅᴇʀ ꜰᴏʀ {event.chat.title}")
         else:
             await event.reply("ᴅᴇᴛᴇᴄᴛᴇᴅ ᴘʀᴇᴛᴇɴᴅᴇʀ ᴜsᴀɢᴇ:\n/pretender on|off")

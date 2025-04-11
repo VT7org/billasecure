@@ -2,6 +2,7 @@ from telethon import events
 from telethon.tl.functions.channels import GetFullChannelRequest
 from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon.tl.types import PeerChannel, PeerUser
+from telethon.errors import ChatAdminRequiredError
 from pymongo import MongoClient
 from config import MONGO_URI, DB_NAME, OWNER_ID, SUDO_USERS, SUPPORT_ID
 from config import BOT

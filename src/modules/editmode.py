@@ -1,5 +1,6 @@
 from telethon import events
 from telethon.tl.functions.channels import GetFullChannelRequest
+from telethon.tl.functions.messages import ChatInviteRequest
 from telethon.tl.types import PeerChannel, PeerUser
 from pymongo import MongoClient
 from config import MONGO_URI, DB_NAME, OWNER_ID, SUDO_USERS, SUPPORT_ID
@@ -34,10 +35,28 @@ sudo_users.append(OWNER_ID)  # Add owner to sudo users list initially
 @BOT.on(events.NewMessage(func=lambda e: e.is_group))
 async def track_groups(event):
     chat = await event.get_chat()
-    group_data = {"group_id": chat.id, "group_name": chat.title, "invite_link": "ɴᴏ ɪɴᴠɪᴛᴇ ʟɪɴᴋ ᴀᴠᴀɪʟᴀʙʟᴇ"}
+    group_id = chat.id
+    group_name = chat.title or "Unknown Group"
 
-    if not active_groups_collection.find_one({"group_id": chat.id}):
-        active_groups_collection.insert_one(group_data)
+    # Try to get invite link
+    try:
+        invite = await BOT(ExportChatInviteRequest(group_id))
+        invite_link = f"https://t.me/{invite.link.split('/')[-1]}"
+    except ChatAdminRequiredError:
+        invite_link = "ɴᴏ ɪɴᴠɪᴛᴇ ʟɪɴᴋ ᴀᴠᴀɪʟᴀʙʟᴇ"
+    except Exception as e:
+        print(f"Error getting invite link for {group_name}: {e}")
+        invite_link = "ɴᴏ ɪɴᴠɪᴛᴇ ʟɪɴᴋ ᴀᴠᴀɪʟᴀʙʟᴇ"
+
+    # Realtime upsert (update or insert)
+    active_groups_collection.update_one(
+        {"group_id": group_id},
+        {"$set": {
+            "group_name": group_name,
+            "invite_link": invite_link
+        }},
+        upsert=True
+    )
 
 # Check for edited messages
 @BOT.on(events.MessageEdited)
@@ -136,6 +155,73 @@ async def check_edit(event):
         )
         logger.error(error_msg)
         await BOT.send_message(SUPPORT_ID, error_msg, parse_mode='html')
+
+
+@BOT.on(events.ChatAction())
+async def handle_bot_added_or_removed(event):
+    me = await BOT.get_me()
+
+    # Bot added to group
+    if event.user_added and event.user_id == me.id:
+        try:
+            chat = await event.get_chat()
+            group_id = chat.id
+            group_name = chat.title or "Unknown Group"
+
+            try:
+                adder = await event.get_user()
+                adder_name = f"{adder.first_name or ''} {adder.last_name or ''}".strip()
+                adder_identifier = f"@{adder.username}" if adder.username else f"User ID: <code>{adder.id}</code>"
+            except Exception:
+                adder_name = "Unknown User"
+                adder_identifier = "Unknown"
+
+            if not active_groups_collection.find_one({"group_id": group_id}):
+                group_data = {
+                    "group_id": group_id,
+                    "group_name": group_name,
+                    "invite_link": "ɴᴏ ɪɴᴠɪᴛᴇ ʟɪɴᴋ ᴀᴠᴀɪʟᴀʙʟᴇ"
+                }
+                active_groups_collection.insert_one(group_data)
+
+            msg = (
+                f"✅ <b>Bɪʟʟᴀ Gᴜᴀʀᴅɪᴀɴ ᴀᴅᴅᴇᴅ</b>\n"
+                f"<b>To:</b> {group_name}\n"
+                f"<b>Gʀᴏᴜᴘ ID:</b> <code>{group_id}</code>\n"
+                f"<b>ᴀᴅᴅᴇᴅ ʙʏ:</b> {adder_name} | {adder_identifier}"
+            )
+            await BOT.send_message(SUPPORT_ID, msg, parse_mode='html')
+
+        except Exception as e:
+            print(f"Eʀʀᴏʀ wʜɪʟᴇ ɪɴsᴘᴇᴄᴛɪɴɢ ʙɪʟʟᴀ ᴀᴅᴅɪᴛɪᴏɴ ɪɴ ɢʀᴏᴜᴘ ᴄʜᴀᴛs: {e}")
+
+    # Bot removed from group
+    elif (event.user_left or event.user_kicked) and event.user_id == me.id:
+        try:
+            chat = await event.get_chat()
+            group_id = chat.id
+            group_name = chat.title or "ɪɴᴠɪᴛᴇ ᴜsᴇʀ ʀɪɢʜᴛs ᴡᴇʀᴇ ɴᴏᴛ ɢɪᴠᴇɴ ᴛᴏ ɢᴜᴀʀᴅɪғʏ ɪɴ ɢʀᴏᴜᴘ ᴄʜᴀᴛ ᴛʜᴀᴛs ᴡʜʏ ʟɪɴᴋ ɪsɴᴛ ᴀᴠᴀɪʟᴀʙʟᴇ"
+
+            try:
+                remover = await event.get_user()
+                remover_name = f"{remover.first_name or ''} {remover.last_name or ''}".strip()
+                remover_identifier = f"@{remover.username}" if remover.username else f"User ID: <code>{remover.id}</code>"
+            except Exception:
+                remover_name = "Unknown User"
+                remover_identifier = "Unknown"
+
+            active_groups_collection.delete_one({"group_id": group_id})
+
+            msg = (
+                f"❌ <b>Bɪʟʟᴀ Gᴜᴀʀᴅɪᴀɴ ʀᴇᴍᴏᴠᴇᴅ</b>\n"
+                f"<b>From:</b> {group_name}\n"
+                f"<b>Group ID:</b> <code>{group_id}</code>\n"
+                f"<b>Rᴇᴍᴏᴠᴇᴅ Bʏ:</b> {remover_name} | {remover_identifier}"
+            )
+            await BOT.send_message(SUPPORT_ID, msg, parse_mode='html')
+
+        except Exception as e:
+            print(f"ᴇʀʀᴏʀ ᴡʜɪʟᴇ ᴄʜᴇᴄᴋɪɴɢ ɢᴜᴀʀᴅɪғʏ ʀᴇᴍᴏᴠᴀʟ ɪɴ ɢʀᴏᴜᴘ ᴄʜᴀᴛs: {e}")
 
 # Add sudo user
 @BOT.on(events.NewMessage(pattern='/addsudo'))
@@ -398,21 +484,21 @@ async def list_active_groups(event):
     active_groups_from_db = fetch_active_groups_from_db()
 
     if not active_groups_from_db:
-        await event.reply("Tʜᴇ ʙɪʟʟᴀ ᴇɢ ɪs ɴᴏᴛ ᴀᴄᴛɪᴠᴇ ɪɴ ᴀɴʏ ɢʀᴏᴜᴘs ᴏʀ ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏᴍɴᴇᴄᴛ ᴛᴏ MᴏɴɢᴏDB.")
+        await event.reply("Tʜᴇ ʙɪʟʟᴀ ᴇɢ ɪs ɴᴏᴛ ᴀᴄᴛɪᴠᴇ ɪɴ ᴀɴʏ ɢʀᴏᴜᴘs ᴏʀ ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏɴɴᴇᴄᴛ ᴛᴏ MᴏɴɢᴏDB.")
         return
 
     group_list_msg = "Aᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs ᴡʜᴇʀᴇ ᴛʜᴇ ʙɪʟʟᴀ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ:\n"
     for group in active_groups_from_db:
         group_name = group.get("group_name", "Unknown Group")
-        invite_link = group.get("invite_link", "Nᴏ ɪɴᴠɪᴛᴀᴛɪᴏɴ ᴀᴠᴀɪʟᴀʙʟᴇ")
+        invite_link = group.get("invite_link", "ɴᴏ ɪɴᴠɪᴛᴇ ʟɪɴᴋ ᴀᴠᴀɪʟᴀʙʟᴇ")
 
-        if invite_link != "ɪɴᴠɪᴛᴀᴛᴀᴛɪᴏɴ ᴀᴠᴀɪʟᴀʙʟᴇ":
+        if invite_link.startswith("http"):
             group_list_msg += f"- <a href='{invite_link}'>[{group_name}]</a>\n"
         else:
             group_list_msg += f"- {group_name}\n"
 
     await event.reply(group_list_msg, parse_mode='html')
-
+    
 # Fetch active groups from MongoDB
 def fetch_active_groups_from_db():
     try:

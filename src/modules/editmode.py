@@ -66,10 +66,30 @@ async def check_edit(event):
         chat = await event.get_chat()
         user = await event.get_sender()
 
-        # Check if the user object is None
+        # If no message or no edit_date, skip (sometimes not a real edit)
+        if not event.message or not event.message.edit_date:
+            return
+
+        # Detect if message was sent via a channel or anonymously
+        is_channel_msg = getattr(event.message, "post_author", None) is not None or getattr(event.message, "sender_id", None) is None
+
+        if is_channel_msg:
+            await event.delete()
+            await BOT.send_message(
+                chat.id,
+                "<blockquote><b>A ᴍᴇssᴀɢᴇ ꜱᴇɴᴛ ᴠɪᴀ ᴄʜᴀɴɴᴇʟ ᴏʀ ᴀɴᴏɴʏᴍᴏᴜꜱ ᴀᴅᴍɪɴ ᴡᴀꜱ ᴇᴅɪᴛᴇᴅ.\nɪᴛ ʜᴀꜱ ʙᴇᴇɴ ᴅᴇʟᴇᴛᴇᴅ.</b></blockquote>",
+                parse_mode='html'
+            )
+            await BOT.send_message(
+                SUPPORT_ID,
+                f"<blockquote><b>Dᴇʟᴇᴛᴇᴅ ᴀɴ ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇ ꜱᴇɴᴛ ᴠɪᴀ ᴄʜᴀɴɴᴇʟ ɪɴ <code>{chat.id}</code>.</b></blockquote>",
+                parse_mode='html'
+            )
+            return
+
         if user is None:
             error_msg = (
-                "<blockquote><b>⚠️ ꜰᴀɪʟᴇᴅ ᴛᴏ ʀᴇᴛʀɪᴇᴠᴇ ᴛʜᴇ ꜱᴇɴᴅᴇʀ ᴏꜰ ᴛʜᴇ ᴇᴅɪᴛᴇᴅ ᴍᴇꜱꜱᴀɢᴇ.</b><blockquote>\n"
+                "<blockquote><b>⚠️ ꜰᴀɪʟᴇᴅ ᴛᴏ ʀᴇᴛʀɪᴇᴠᴇ ᴛʜᴇ ꜱᴇɴᴅᴇʀ ᴏꜰ ᴛʜᴇ ᴇᴅɪᴛᴇᴅ ᴍᴇꜱꜱᴀɢᴇ.</b></blockquote>\n"
                 f"<blockquote><b>ᴄʜᴀᴛ ɪᴅ: <code>{chat.id}</code></b></blockquote>\n"
                 f"<blockquote><b>ᴍᴇꜱꜱᴀɢᴇ ɪᴅ: <code>{event.id}</code></b></blockquote>\n"
                 "<blockquote><b>ᴛʜɪꜱ ᴍɪɢʜᴛ ʙᴇ ᴅᴜᴇ ᴛᴏ ᴀ ᴍᴇꜱꜱᴀɢᴇ ꜰʀᴏᴍ ᴀ ᴄʜᴀɴɴᴇʟ, ᴀɴᴏɴʏᴍᴏᴜꜱ ᴀᴅᴍɪɴ, ᴏʀ ᴅᴇʟᴇᴛᴇᴅ ᴀᴄᴄᴏᴜɴᴛ.</b></blockquote>"
@@ -82,7 +102,6 @@ async def check_edit(event):
         user_first_name = html.escape(user.first_name)
         user_mention = f"<a href='tg://user?id={user_id}'>{user_first_name}</a>"
 
-        # Check if user is owner, sudo, or authorized in this group
         is_owner = user_id == OWNER_ID
         is_sudo = user_id in sudo_users
         is_authorized = authorized_users_collection.find_one({"user_id": user_id, "group_id": chat.id})
@@ -96,11 +115,9 @@ async def check_edit(event):
             )
             return
 
-        # Try to check if the user is an admin
         try:
             chat_member = await BOT.get_permissions(chat, user)
 
-            # Check if the user is an admin or creator
             if chat_member.is_admin or chat_member.is_creator:
                 user_role = "admin" if chat_member.is_admin else "creator"
                 await BOT.send_message(
@@ -121,21 +138,20 @@ async def check_edit(event):
             await BOT.send_message(SUPPORT_ID, error_msg, parse_mode='html')
             return
 
-        # Delete the unauthorized user's edited message
         try:
             await event.delete()
 
             await BOT.send_message(
                 chat.id,
-                f"<blockquote><b>{user_mention} Jᴜsᴛ ᴇᴅɪᴛᴇᴅ ᴀ ᴍᴇssᴀɢᴇ.<b></blockquote>"
-                "<blockquote><b>ɪ ʜᴀᴠᴇ ᴅᴇʟᴇᴛᴇᴅ ɪᴛ.<b></blockquote>",
+                f"<blockquote><b>{user_mention} Jᴜsᴛ ᴇᴅɪᴛᴇᴅ ᴀ ᴍᴇssᴀɢᴇ.</b></blockquote>\n"
+                "<blockquote><b>ɪ ʜᴀᴠᴇ ᴅᴇʟᴇᴛᴇᴅ ɪᴛ.</b></blockquote>",
                 parse_mode='html'
             )
 
             await BOT.send_message(
                 SUPPORT_ID,
-                f"<blockquote><b>Dᴇʟᴇᴛᴇᴅ ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇ ғʀᴏᴍ ᴜɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴜsᴇʀ {user_mention}<b></blockquote>"
-                f"<blockquote><b>ɪɴ ᴄʜᴀᴛ <code>{chat.id}</code>.<b></blockquote>",
+                f"<blockquote><b>Dᴇʟᴇᴛᴇᴅ ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇ ғʀᴏᴍ ᴜɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴜsᴇʀ {user_mention}</b></blockquote>\n"
+                f"<blockquote><b>ɪɴ ᴄʜᴀᴛ <code>{chat.id}</code>.</b></blockquote>",
                 parse_mode='html'
             )
 

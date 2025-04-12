@@ -3,11 +3,14 @@ import requests
 import importlib
 from pathlib import Path
 import speedtest
-import pymongo
 from pymongo import MongoClient
 from telethon import events
-from config import BOT, MONGO_URI, OWNER_ID, SUDO_ID
-from src.vxcore import logger
+from config import BOT, MONGO_URI, OWNER_ID, SUDO_USERS
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Function to check if the user is authorized
 async def is_authorized_user(user_id):
@@ -15,15 +18,14 @@ async def is_authorized_user(user_id):
     if str(user_id) == str(OWNER_ID):
         return True
     
-    # Check if the user is the sudo user (SUDO_ID) from config
-    if str(user_id) == str(SUDO_ID):
+    # Check if the user is in the config's SUDO_USERS list
+    if str(user_id) in map(str, SUDO_USERS):
         return True
-    
-    # Check if the user is in the list of sudo users in the database
+
+    # Check if the user is in the database sudo_users
     try:
         db = MongoClient(MONGO_URI).get_database()
         sudo_users = db.sudo_users.find_one({"user_id": user_id})
-
         if sudo_users:
             return True
     except Exception as e:
@@ -52,7 +54,7 @@ def check_database_connection():
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         client.server_info()
         return True, None
-    except pymongo.errors.ServerSelectionTimeoutError as e:
+    except Exception as e:
         return False, str(e)
 
 # ISP Info
@@ -80,7 +82,7 @@ def check_module_health(module_name):
     except Exception as e:
         return False, f"❌ {module_name} ᴇʀʀᴏʀ: {str(e)}"
 
-# /health - Without speedtest
+# /health - Basic Health Check
 @BOT.on(events.NewMessage(pattern="/health"))
 async def healthcheck(event):
     try:
@@ -91,7 +93,7 @@ async def healthcheck(event):
             return
         
         start = time.time()
-        msg = await BOT.send_message(event.chat_id, "Rᴜɴɴɪɴɢ ɢᴜᴀʀᴅɪғʏ ʜᴇᴀʟᴛʜ ᴄʜᴇᴄᴋᴜᴘ🍃...")
+        msg = await BOT.send_message(event.chat_id, "Rᴜɴɴɪɴɢ ɢᴜᴀʀᴅɪᴀɴ ʜᴇᴀʟᴛʜ ᴄʜᴇᴄᴋᴜᴘ🍃...")
 
         # Ping
         ping_time = time.time() - start
@@ -132,7 +134,7 @@ async def healthcheck(event):
         logger.error("Health check failed", exc_info=True)
         await event.reply(f"🔴 **ʜᴇᴀʟᴛʜ ᴄʜᴇᴄᴋᴜᴘ ғᴀɪʟᴇᴅ:** `{e}`")
 
-# /sptest - Only Speed Test
+# /sptest - Speed Test Only
 @BOT.on(events.NewMessage(pattern="/sptest"))
 async def sptest(event):
     try:

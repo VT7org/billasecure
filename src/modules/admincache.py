@@ -1,8 +1,8 @@
 # src/modules/admincache.py
+
 from telethon import events
 from telethon.tl.types import ChannelParticipantsAdmins
 from config import BOT
-import asyncio
 from vxcore import admin_cache
 
 async def update_admins(chat_id):
@@ -16,19 +16,18 @@ async def update_admins(chat_id):
 @BOT.on(events.NewMessage(pattern="/reload"))
 async def reload_admin_cache(event):
     if not (event.is_group or event.is_channel):
-        return await event.reply("ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴏɴʟʏ ᴡᴏʀᴋs ɪɴ ɢʀᴏᴜᴘs.")
+        return await event.reply("❌ This command only works in groups.")
     
     await update_admins(event.chat_id)
-    await event.reply("♻️ ᴀᴅᴍɪɴ ᴄᴀᴄʜᴇ ʀᴇʟᴏᴀᴅᴇᴅ ꜱᴜᴄᴄᴇꜱꜱꜰᴜʟʟʏ.")
+    await event.reply("♻️ Admin cache reloaded successfully.")
 
-# Auto-update on admin change or bot added
 @BOT.on(events.ChatAction)
 async def handle_chat_action(event):
     if not (event.is_group or event.is_channel):
         return
 
-    if event.user_added or event.user_joined or event.user_kicked:
-        return  # skip joins
-
-    if event.promoted or event.demoted or event.added_by or event.is_channel:
+    # Clear admin cache on any possible change
+    if event.user_added or event.user_joined or event.user_kicked or event.user_left or \
+       getattr(event, "promoted", False) or getattr(event, "demoted", False) or \
+       hasattr(event, "new_rights") or hasattr(event, "prev_rights"):
         await update_admins(event.chat_id)

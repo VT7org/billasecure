@@ -2,6 +2,7 @@
 from telethon import events
 from telethon.tl.types import ChannelParticipantsAdmins
 from config import BOT
+import asyncio
 from vxcore import admin_cache
 
 async def update_admins(chat_id):

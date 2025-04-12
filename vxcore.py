@@ -5,6 +5,10 @@ import sys
 from flask import Flask
 from flask_restful import Resource, Api
 
+# Define the shared admin cache
+admin_cache = {}
+
+# Logging config
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -18,7 +22,6 @@ def create_app():
             return {"message": "[ᴠx ᴀɪ] ᴄᴏꜱᴍɪᴄ ꜱᴛᴏʀᴍ ɪɴɪᴛɪᴀᴛᴇᴅ. ʀᴇᴀᴅʏ ꜰᴏʀ ɪɴᴛᴇʀꜱᴛᴇʟʟᴀʀ ᴀᴅᴠᴇɴᴛᴜʀᴇꜱ. 🚀"}
 
     api.add_resource(Greeting, '/')
-
     return app
 
 def signal_handler(sig, frame):

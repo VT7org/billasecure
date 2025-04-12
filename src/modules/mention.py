@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 tagging_status = {}
 last_used = {}
-COOLDOWN_SECONDS = 4
+COOLDOWN_SECONDS = 1
 
 
 async def get_tag_string(user):
@@ -40,7 +40,7 @@ async def is_on_cooldown(user_id, cmd, cooldown_seconds=COOLDOWN_SECONDS):
     return False
 
 
-async def batch_send_tags(event, users, batch_size=100, delay=4, reply_msg=None, silent=False):
+async def batch_send_tags(event, users, batch_size=5, delay=1, reply_msg=None, silent=False):
     chat_id = event.chat_id
     tagging_status[chat_id] = True
     total_tagged = 0

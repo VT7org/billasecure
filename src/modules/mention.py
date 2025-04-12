@@ -1,7 +1,8 @@
+import asyncio
 from telethon import events
 from telethon.errors import FloodWaitError
+from telethon.tl.types import ChannelParticipantsAdmins  # FIXED import for admin filtering
 from config import BOT
-import asyncio
 
 tagging_status = {}
 
@@ -26,7 +27,9 @@ async def batch_send_tags(event, users, batch_size=10, delay=2, reply_msg=None):
                 msg = "\n".join(batch)
                 if reply_msg:
                     msg += f"\n\n➡️ {reply_msg.sender.first_name} says: {reply_msg.text}"
-                await BOT.send_message(chat_id, msg, parse_mode="md", reply_to=reply_msg.id if reply_msg else event.id)
+                await BOT.send_message(
+                    chat_id, msg, parse_mode="md", reply_to=reply_msg.id if reply_msg else event.id
+                )
                 total_tagged += len(batch)
                 batch = []
                 await asyncio.sleep(delay)
@@ -40,10 +43,13 @@ async def batch_send_tags(event, users, batch_size=10, delay=2, reply_msg=None):
         msg = "\n".join(batch)
         if reply_msg:
             msg += f"\n\n➡️ {reply_msg.sender.first_name} says: {reply_msg.text}"
-        await BOT.send_message(chat_id, msg, parse_mode="md", reply_to=reply_msg.id if reply_msg else event.id)
+        await BOT.send_message(
+            chat_id, msg, parse_mode="md", reply_to=reply_msg.id if reply_msg else event.id
+        )
         total_tagged += len(batch)
 
     await event.respond(f"✅ Tagging completed. Total users tagged: {total_tagged}")
+
 
 @BOT.on(events.NewMessage(pattern="/utag"))
 async def tag_all(event):
@@ -51,8 +57,13 @@ async def tag_all(event):
         return await event.reply("❌ Use this in a group.")
 
     reply_msg = await event.get_reply_message()
-    users = [user async for user in BOT.iter_participants(event.chat_id)]
+    try:
+        users = [user async for user in BOT.iter_participants(event.chat_id)]
+    except Exception as e:
+        return await event.reply(f"⚠️ Failed to fetch users: {e}")
+
     await batch_send_tags(event, users, reply_msg=reply_msg)
+
 
 @BOT.on(events.NewMessage(pattern="/atag"))
 async def tag_admins(event):
@@ -60,8 +71,13 @@ async def tag_admins(event):
         return await event.reply("❌ Use this in a group.")
 
     reply_msg = await event.get_reply_message()
-    users = [user async for user in BOT.iter_participants(event.chat_id, filter=events.ChatParticipants.ADMINISTRATORS)]
+    try:
+        users = [user async for user in BOT.iter_participants(event.chat_id, filter=ChannelParticipantsAdmins)]
+    except Exception as e:
+        return await event.reply(f"⚠️ Failed to fetch admins: {e}")
+
     await batch_send_tags(event, users, reply_msg=reply_msg)
+
 
 @BOT.on(events.NewMessage(pattern="/stop"))
 async def stop_tagging(event):

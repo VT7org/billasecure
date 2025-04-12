@@ -27,4 +27,4 @@ SUPPORT_ID = int(os.getenv("SUPPORT_ID", "-1002440907656"))
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Initialize the bot client
-BOT = TelegramClient('ꜱ ᴛ ᴏ ʀ ᴍ', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+BOT = TelegramClient("billa_guardian", API_ID, API_HASH).start(bot_token=BOT_TOKEN)

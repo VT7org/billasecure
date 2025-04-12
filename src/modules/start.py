@@ -3,15 +3,18 @@ from telethon.tl.custom import Button
 from config import BOT, SUDO_USERS, OWNER_ID, MONGO_URI
 from pymongo import MongoClient
 import os
-import heroku3
-import logging
 import asyncio
+import logging
 
 # MongoDB Setup
 client = MongoClient(MONGO_URI)
 db = client["billa_guardian"]
 users_collection = db["users"]
 groups_collection = db["groups"]
+
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 START_OP = [
     [Button.url("ᴀᴅᴅ ᴍᴇ ↗️", "https://t.me/BillaGuardianBot?startgroup=true&admin=delete_messages")],
@@ -27,13 +30,18 @@ async def start(event):
     if event.is_private:
         users_collection.update_one(
             {"chat_id": chat_id},
-            {"$set": {"name": sender.first_name}},
+            {"$set": {
+                "name": sender.first_name,
+                "user_id": sender.id
+            }},
             upsert=True
         )
     elif event.is_group or event.is_channel:
         groups_collection.update_one(
             {"chat_id": chat_id},
-            {"$set": {"name": chat.title}},
+            {"$set": {
+                "name": chat.title
+            }},
             upsert=True
         )
 
@@ -53,7 +61,8 @@ async def start(event):
 
 @BOT.on(events.NewMessage(pattern='/update'))
 async def update_and_restart(event):
-    if event.sender_id not in SUDO_USERS:
+    from utils.sudo import get_sudo_users
+    if event.sender_id != OWNER_ID and event.sender_id not in get_sudo_users():
         await event.reply("ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
 
@@ -67,7 +76,8 @@ async def update_and_restart(event):
 
 @BOT.on(events.NewMessage(pattern='/stop'))
 async def stop_bot(event):
-    if event.sender_id not in SUDO_USERS:
+    from utils.sudo import get_sudo_users
+    if event.sender_id != OWNER_ID and event.sender_id not in get_sudo_users():
         await event.reply("ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
 

@@ -1,38 +1,58 @@
 import time
 import requests
 import importlib
-import logging
 from pathlib import Path
 import speedtest
 import pymongo
 from pymongo import MongoClient
 from telethon import events
-from config import BOT, MONGO_URI
+from config import BOT, MONGO_URI, OWNER_ID, SUDO_ID
+from src.vxcore import logger
 
-# Setup logger
-logger = logging.getLogger("HealthCheck")
-logging.basicConfig(level=logging.INFO)
+# Function to check if the user is authorized
+async def is_authorized_user(user_id):
+    # Check if the user is the owner
+    if str(user_id) == str(OWNER_ID):
+        return True
+    
+    # Check if the user is the sudo user (SUDO_ID) from config
+    if str(user_id) == str(SUDO_ID):
+        return True
+    
+    # Check if the user is in the list of sudo users in the database
+    try:
+        db = MongoClient(MONGO_URI).get_database()
+        sudo_users = db.sudo_users.find_one({"user_id": user_id})
+
+        if sudo_users:
+            return True
+    except Exception as e:
+        logger.error(f"Error while checking sudo users: {e}")
+
+    return False
 
 # Speed Test
 def perform_speed_test():
     logger.info("Performing speed test...")
-    st = speedtest.Speedtest()
-    st.get_best_server()
-    download_speed = st.download() / 1_000_000  # in Mbps
-    upload_speed = st.upload() / 1_000_000  # in Mbps
-    ping = st.results.ping
-    logger.info(f"Speed Test Results - Download: {download_speed:.2f} Mbps, Upload: {upload_speed:.2f} Mbps, Ping: {ping} ms")
-    return download_speed, upload_speed, ping
+    try:
+        st = speedtest.Speedtest()
+        st.get_best_server()
+        download_speed = st.download() / 1_000_000  # Mbps
+        upload_speed = st.upload() / 1_000_000  # Mbps
+        ping = st.results.ping
+        logger.info(f"Speed Test - DL: {download_speed:.2f} Mbps, UL: {upload_speed:.2f} Mbps, Ping: {ping} ms")
+        return download_speed, upload_speed, ping
+    except Exception as e:
+        logger.error("Speed test failed", exc_info=True)
+        raise RuntimeError("Uɴᴀʙʟᴇ ᴛᴏ ᴄᴏɴɴᴇᴄᴛ ᴛᴏ sᴘᴇᴇᴅᴛᴇsᴛ sᴇʀᴠᴇʀs. Tʀʏ ᴀɢᴀɪɴ ʟᴀᴛᴇʀ.")
 
 # Database Connection Test
 def check_database_connection():
     try:
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         client.server_info()
-        logger.info("MongoDB connection successful.")
         return True, None
     except pymongo.errors.ServerSelectionTimeoutError as e:
-        logger.error(f"MongoDB connection failed: {str(e)}")
         return False, str(e)
 
 # ISP Info
@@ -40,112 +60,101 @@ def get_isp_info():
     try:
         response = requests.get("https://ipinfo.io/json")
         data = response.json()
-        ip = data.get("ip", "N/A")
-        city = data.get("city", "N/A")
-        country = data.get("country", "N/A")
-        isp = data.get("org", "N/A")
-        logger.info(f"ISP Info - IP: {ip}, City: {city}, Country: {country}, ISP: {isp}")
-        return ip, city, country, isp
-    except requests.RequestException as e:
-        logger.error(f"Failed to fetch ISP info: {str(e)}")
+        return data.get("ip", "N/A"), data.get("city", "N/A"), data.get("country", "N/A"), data.get("org", "N/A")
+    except requests.RequestException:
         return "N/A", "N/A", "N/A", "N/A"
 
 # Module Health Check
 def check_module_health(module_name):
     try:
         module = importlib.import_module(f"src.modules.{module_name}")
-
         if not hasattr(module, 'BOT'):
-            return False, f"❌ {module_name} does not contain a 'BOT' object."
-
-        required_functions = ['update_admins', 'handle_chat_action']
-        missing_functions = [
-            func for func in required_functions
-            if not hasattr(module, func) or not callable(getattr(module, func))
+            return False, f"❌ {module_name} missing 'BOT' object."
+        missing = [
+            func for func in ['update_admins', 'handle_chat_action']
+            if not callable(getattr(module, func, None))
         ]
-
-        if missing_functions:
-            return False, f"❌ {module_name} is missing functions: {', '.join(missing_functions)}."
-
-        return True, f"✅ {module_name} loaded and working properly."
+        if missing:
+            return False, f"❌ {module_name} ᴍɪssɪɴɢ: {', '.join(missing)}."
+        return True, f"🌱 {module_name} ʟᴏᴀᴅᴇᴅ ғɪɴᴇ."
     except Exception as e:
-        return False, f"❌ Failed to load {module_name}: {str(e)}"
+        return False, f"❌ {module_name} ᴇʀʀᴏʀ: {str(e)}"
 
-# General health check (no speed test)
+# /health - Without speedtest
 @BOT.on(events.NewMessage(pattern="/health"))
 async def healthcheck(event):
     try:
-        start_time = time.time()
+        user_id = event.sender_id
 
-        # 1. Ping Test
-        ping_start = time.time()
-        response = await BOT.send_message(event.chat_id, "Testing bot health...")
-        ping_time = time.time() - ping_start
-        logger.info(f"Bot ping response time: {ping_time * 1000:.2f} ms")
+        if not await is_authorized_user(user_id):
+            await event.reply("❌ ᴄᴏᴍᴍᴀɴᴅ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ. ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀ ᴠᴀʟɪᴅ ᴜsᴇʀ.")
+            return
+        
+        start = time.time()
+        msg = await BOT.send_message(event.chat_id, "Rᴜɴɴɪɴɢ ɢᴜᴀʀᴅɪғʏ ʜᴇᴀʟᴛʜ ᴄʜᴇᴄᴋᴜᴘ🍃...")
 
-        # 2. Database Check
-        db_status, db_error = check_database_connection()
-        db_status_msg = (
-            "Database is connected successfully."
-            if db_status else f"Database connection failed: {db_error}"
-        )
+        # Ping
+        ping_time = time.time() - start
 
-        # 3. ISP Info
+        # DB Check
+        db_ok, db_error = check_database_connection()
+        db_status = "Cᴏɴɴᴇᴄᴛᴇᴅ" if db_ok else f"Fᴀɪʟᴇᴅ: {db_error}"
+
+        # ISP Info
         ip, city, country, isp = get_isp_info()
 
-        # 4. Module Checks
-        modules = ["admincache", "mention"]  # Add all modules to check
-        module_check_results = []
-        for module in modules:
-            success, message = check_module_health(module)
-            logger.info(message)
-            module_check_results.append(f"{message} ({'✅' if success else '❌'})")
+        # Module Checks
+        modules = ["admincache", "mention", "start", "editmode", "nsfw", "purge", "broadcast", "pretender", "help", "delete"]
+        module_report = []
+        for m in modules:
+            ok, status = check_module_health(m)
+            module_report.append(f"{status} ({'✅' if ok else '❌'})")
 
-        # Final Report
-        report_lines = [
-            "🟢 **Bot Health Check Passed!** ✅",
+        # Report
+        report = [
+            " **ɢᴜᴀʀᴅɪᴀɴ ʜᴇᴀʟᴛʜ ᴄʜᴇᴄᴋᴜᴘ ʀᴇᴘᴏʀᴛ☘️:**",
+            f"⏱️ ʀᴇsᴘᴏɴsᴇ ᴛɪᴍᴇ: `{ping_time * 1000:.2f} ᴍs`",
+            f"🐳 ᴅʙ sᴛᴀᴛᴜs: `{db_status}`",
             "",
-            f"**Bot Response Time:** {ping_time * 1000:.2f} ms",
+            "🌐 **ISP Iɴғᴏ:**",
+            f"Iᴘ: `{ip}`",
+            f"Cɪᴛʏ: `{city}`, Cᴏᴜɴᴛʀʏ: `{country}`",
+            f"Isᴘ: `{isp}`",
             "",
-            f"**Database Status:** {db_status_msg}",
+            "**Mᴏᴅᴜʟᴇs:**",
+            *module_report,
             "",
-            "**ISP Information:**",
-            f"🌐 **IP Address:** {ip}",
-            f"🌆 **City:** {city}",
-            f"🌍 **Country:** {country}",
-            f"📶 **ISP:** {isp}",
-            "",
-            "**Module Health Check Results:**",
-            *module_check_results,
-            "",
-            f"⏳ **Total Health Check Time:** {time.time() - start_time:.2f} seconds"
+            f"⏳ Tᴏᴛᴀʟ Tɪᴍᴇ: `{time.time() - start:.2f} sᴇᴄ`"
         ]
 
-        await response.edit("\n".join(report_lines))
-
-        # Optional: Log to DB
-        # db.health_logs.insert_one({ "timestamp": time.time(), "results": report_lines })
-
+        await msg.edit("\n".join(report))
     except Exception as e:
-        logger.exception("Health check failed")
-        await event.reply(f"🔴 **Health check failed!** Error: {str(e)}")
+        logger.error("Health check failed", exc_info=True)
+        await event.reply(f"🔴 **ʜᴇᴀʟᴛʜ ᴄʜᴇᴄᴋᴜᴘ ғᴀɪʟᴇᴅ:** `{e}`")
 
-# Speed test command separately
+# /sptest - Only Speed Test
 @BOT.on(events.NewMessage(pattern="/sptest"))
 async def sptest(event):
     try:
-        msg = await event.respond("Running speed test. Please wait...")
+        user_id = event.sender_id
+
+        if not await is_authorized_user(user_id):
+            await event.reply("❌ ᴄᴏᴍᴍᴀɴᴅ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ. ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀ ᴠᴀʟɪᴅ ᴜsᴇʀ.")
+            return
+        
+        msg = await event.respond("Rᴜɴɴɪɴɢ sᴘᴇᴇᴅ ᴛᴇsᴛ. ʜᴏʟᴅ ᴏɴ...")
         download_speed, upload_speed, ping = perform_speed_test()
 
-        result_text = "\n".join([
-            "🏎️ **Speed Test Results:**",
-            f"📥 **Download Speed:** {download_speed:.2f} Mbps",
-            f"📤 **Upload Speed:** {upload_speed:.2f} Mbps",
-            f"🏓 **Ping:** {ping} ms"
+        result = "\n".join([
+            "🏎️ **Sᴘᴇᴇᴅ ᴛᴇsᴛ ʀᴇsᴜʟᴛs:**",
+            f"📥 Dᴏᴡɴʟᴏᴀᴅ: `{download_speed:.2f} Mʙᴘs`",
+            f"📤 Uᴘʟᴏᴀᴅ: `{upload_speed:.2f} Mʙᴘs`",
+            f"🏓 Pɪɴɢ ʟᴀᴛᴇɴᴄʏ: `{ping} ᴍs`"
         ])
+        await msg.edit(result)
 
-        await msg.edit(result_text)
-
+    except RuntimeError as e:
+        await event.reply(f"⚠️ {str(e)}")
     except Exception as e:
-        logger.exception("Speed test failed")
-        await event.reply(f"⚠️ Speed test failed: {str(e)}")
+        logger.error("Unexpected error during speedtest", exc_info=True)
+        await event.reply("⚠️ ᴜɴᴇxᴘᴇᴄᴛᴇᴅ ᴇʀʀᴏʀ ᴏʀ ᴍᴀʏ ɪsᴘ ʙʟᴏᴄᴋᴇᴅ ᴛᴏ ᴄʜᴋ sᴘᴇᴇᴅᴛᴇsᴛ.")

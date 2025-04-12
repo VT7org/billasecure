@@ -1,7 +1,7 @@
 import asyncio
 from telethon import events
 from telethon.errors import FloodWaitError
-from telethon.tl.types import ChannelParticipantsAdmins  # FIXED import for admin filtering
+from telethon.tl.types import ChannelParticipantsAdmins, User
 from config import BOT
 
 tagging_status = {}
@@ -26,7 +26,8 @@ async def batch_send_tags(event, users, batch_size=10, delay=2, reply_msg=None):
             if len(batch) == batch_size:
                 msg = "\n".join(batch)
                 if reply_msg:
-                    msg += f"\n\n➡️ {reply_msg.sender.first_name} says: {reply_msg.text}"
+                    sender_name = getattr(reply_msg.sender, 'first_name', 'Anonymous')
+                    msg += f"\n\n➡️ {sender_name} says: {reply_msg.text}"
                 await BOT.send_message(
                     chat_id, msg, parse_mode="md", reply_to=reply_msg.id if reply_msg else event.id
                 )
@@ -42,14 +43,14 @@ async def batch_send_tags(event, users, batch_size=10, delay=2, reply_msg=None):
     if batch:
         msg = "\n".join(batch)
         if reply_msg:
-            msg += f"\n\n➡️ {reply_msg.sender.first_name} says: {reply_msg.text}"
+            sender_name = getattr(reply_msg.sender, 'first_name', 'Anonymous')
+            msg += f"\n\n➡️ {sender_name} says: {reply_msg.text}"
         await BOT.send_message(
             chat_id, msg, parse_mode="md", reply_to=reply_msg.id if reply_msg else event.id
         )
         total_tagged += len(batch)
 
     await event.respond(f"✅ Tagging completed. Total users tagged: {total_tagged}")
-
 
 @BOT.on(events.NewMessage(pattern="/utag"))
 async def tag_all(event):
@@ -64,7 +65,6 @@ async def tag_all(event):
 
     await batch_send_tags(event, users, reply_msg=reply_msg)
 
-
 @BOT.on(events.NewMessage(pattern="/atag"))
 async def tag_admins(event):
     if event.is_private:
@@ -77,7 +77,6 @@ async def tag_admins(event):
         return await event.reply(f"⚠️ Failed to fetch admins: {e}")
 
     await batch_send_tags(event, users, reply_msg=reply_msg)
-
 
 @BOT.on(events.NewMessage(pattern="/stop"))
 async def stop_tagging(event):

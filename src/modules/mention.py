@@ -6,7 +6,6 @@ from telethon.errors import FloodWaitError
 from telethon.tl.types import ChannelParticipantsAdmins
 from config import BOT
 
-
 # Logger setup
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -16,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 tagging_status = {}
 last_used = {}
-MAX_TAG_LIMIT = 100
 COOLDOWN_SECONDS = 4
 
 
@@ -33,14 +31,6 @@ async def is_admin(event):
         return False
 
 
-async def is_sudo(user_id):
-    try:
-        return await sudo_users.find_one({"_id": user_id}) is not None
-    except Exception as e:
-        logger.error(f"SUDO check failed: {e}")
-        return False
-
-
 async def is_on_cooldown(user_id, cmd, cooldown_seconds=COOLDOWN_SECONDS):
     now = datetime.utcnow()
     key = f"{user_id}:{cmd}"
@@ -50,7 +40,7 @@ async def is_on_cooldown(user_id, cmd, cooldown_seconds=COOLDOWN_SECONDS):
     return False
 
 
-async def batch_send_tags(event, users, batch_size=10, delay=2, reply_msg=None, silent=False):
+async def batch_send_tags(event, users, batch_size=100, delay=4, reply_msg=None, silent=False):
     chat_id = event.chat_id
     tagging_status[chat_id] = True
     total_tagged = 0
@@ -112,9 +102,6 @@ async def tag_all(event):
 
     try:
         users = [user async for user in BOT.iter_participants(event.chat_id)]
-        if len(users) > MAX_TAG_LIMIT:
-            users = users[:MAX_TAG_LIMIT]
-            await event.reply(f"⚠️ Tᴏᴏ ᴍᴀɴʏ ᴜsᴇʀs. Oɴʟʏ ᴛᴀɢɢɪɴɢ ғɪʀsᴛ {MAX_TAG_LIMIT}.")
     except Exception as e:
         logger.error(f"Failed to fetch users: {e}")
         return await event.reply(f"⚠️ Fᴀɪʟᴇᴅ ᴛᴏ ғᴇᴛᴄʜ ᴜsᴇʀs: {e}")

@@ -22,11 +22,11 @@ def get_sudo_users():
 @BOT.on(events.NewMessage(pattern="/broadcast"))
 async def broadcast(event):
     if event.sender_id != OWNER_ID and event.sender_id not in get_sudo_users():
-        return await event.reply("❌ You are not authorized to use this command.")
+        return await event.reply("❌ Yᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
 
     reply = await event.get_reply_message()
     if not reply:
-        return await event.reply("Please reply to the message you want to broadcast.")
+        return await event.reply("❗Rᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ.")
 
     users = list(users_collection.find())
     groups = list(groups_collection.find())
@@ -36,7 +36,7 @@ async def broadcast(event):
     success_users, failed_users = 0, 0
     success_groups, failed_groups = 0, 0
 
-    await event.reply(f"Broadcasting to {total_users} users and {total_groups} groups...")
+    await event.reply(f"📡 Sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ `{total_users}` ᴜsᴇʀs ᴀɴᴅ `{total_groups}` ɢʀᴏᴜᴘs...")
 
     for user in users:
         try:
@@ -63,7 +63,7 @@ async def broadcast(event):
             logger.error(f"Group broadcast fail {group['chat_id']}: {e}")
 
     await event.reply(
-        f"✅ Broadcast Complete.\n"
-        f"Users: {success_users}/{total_users} successful, {failed_users} failed.\n"
-        f"Groups: {success_groups}/{total_groups} successful, {failed_groups} failed."
-)
+        f"✅ **Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇ**\n\n"
+        f"👤 **Uꜱᴇʀs:** `{success_users}/{total_users}` sᴜᴄᴄᴇssғᴜʟ, `{failed_users}` ғᴀɪʟᴇᴅ.\n"
+        f"👥 **Gʀᴏᴜᴘs:** `{success_groups}/{total_groups}` sᴜᴄᴄᴇssғᴜʟ, `{failed_groups}` ғᴀɪʟᴇᴅ."
+        )

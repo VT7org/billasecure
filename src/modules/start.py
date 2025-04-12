@@ -1,13 +1,14 @@
 from telethon import events
 from telethon.tl.custom import Button
-from config import BOT, SUDO_USERS, OWNER_ID, MONGO_URL
+from config import BOT, SUDO_USERS, OWNER_ID, MONGO_URI
 from pymongo import MongoClient
+import os
 import heroku3
 import logging
 import asyncio
 
 # MongoDB Setup
-client = MongoClient(MONGO_URL)
+client = MongoClient(MONGO_URI)
 db = client["billa_guardian"]
 users_collection = db["users"]
 groups_collection = db["groups"]
@@ -52,15 +53,12 @@ async def start(event):
 
 @BOT.on(events.NewMessage(pattern='/update'))
 async def update_and_restart(event):
-    # Check if the user is a SUDO_USER
     if event.sender_id not in SUDO_USERS:
         await event.reply("ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
 
     response = await event.reply("ᴜᴘᴅᴀᴛɪɴɢ ᴀɴᴅ ʀᴇsᴛᴀʀᴛɪɴɢ...")
-    
     try:
-        # Perform git pull to update the code
         os.system("git pull")
         os.system(f"kill -9 {os.getpid()} && bash start.sh")
         await response.edit("ᴜᴘᴅᴀᴛᴇᴅ ᴀɴᴅ ʀᴇsᴛᴀʀᴛᴇᴅ ʟᴏᴄᴀʟʟʏ!")
@@ -69,16 +67,12 @@ async def update_and_restart(event):
 
 @BOT.on(events.NewMessage(pattern='/stop'))
 async def stop_bot(event):
-    # Check if the user is a SUDO_USER
     if event.sender_id not in SUDO_USERS:
         await event.reply("ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
 
     response = await event.reply("sᴛᴏᴘᴘɪɴɢ ʙᴏᴛ...")
-    
     try:
-        # Kill the current process
         os.system(f"kill -9 {os.getpid()}")
     except Exception as e:
-        LOGS.error(e)
         await response.edit(f"ғᴀɪʟᴇᴅ ᴛᴏ sᴛᴏᴘ ʙᴏᴛ: {e}")

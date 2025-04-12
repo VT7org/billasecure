@@ -19,7 +19,7 @@ async def reload_admin_cache(event):
         return await event.reply("❌ This command only works in groups.")
     
     await update_admins(event.chat_id)
-    await event.reply("♻️ Admin cache reloaded successfully.")
+    await event.reply("♻️ Aᴅᴍɪɴs ᴄᴀᴄʜᴇ ʀᴇʟᴏᴀᴅᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ.")
 
 @BOT.on(events.ChatAction)
 async def handle_chat_action(event):

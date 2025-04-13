@@ -28,7 +28,7 @@ for name in files:
     plugin_name = patt.stem
     load_plugins(plugin_name)
 
-print("\nʙᴏᴛ ɪꜱ ᴅᴇᴘʟᴏʏᴇᴅ ꜱᴜᴄᴄᴇꜱꜰᴜʟʟʏ")
+print("\nGuardify ɪꜱ ᴅᴇᴘʟᴏʏᴇᴅ ꜱᴜᴄᴄᴇꜱꜰᴜʟʟʏ")
 
 async def main():
     tasks = [

@@ -1,8 +1,9 @@
 import asyncio
-import logging
 from telethon import events
+from telethon.errors import FloodWaitError
 from config import BOT, MONGO_URI, OWNER_ID, SUDO_USERS
 from pymongo import MongoClient
+import logging
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 client = MongoClient(MONGO_URI)
 db = client["billa_guardian"]
 users_collection = db["users"]
-active_groups_collection = db["active_groups"]
+active_groups_collection = db["active_groups"]  # For groups the bot is active in
 
 # Combine config SUDO and Mongo users
 def get_sudo_users():
@@ -37,64 +38,90 @@ async def broadcast(event):
         return await event.reply("❗Rᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ.")
 
     users = list(users_collection.find())
-    groups = list(active_groups_collection.find())
+    active_groups = list(active_groups_collection.find())
 
     total_users = len(users)
-    total_groups = len(groups)
+    total_groups = len(active_groups)
     success_users, failed_users = 0, 0
     success_groups, failed_groups = 0, 0
 
-    await event.reply(f"🍃 Sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ <code>{total_users}</code> ᴜsᴇʀs ᴀɴᴅ <code>{total_groups}</code> ɢʀᴏᴜᴘs...", parse_mode="html")
+    await event.reply(f"🍃 Sᴛᴀʀᴛᴇᴅ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ `{total_users}` ᴜsᴇʀs ᴀɴᴅ `{total_groups}` ᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs...")
 
-    # Broadcast to users
     for user in users:
-        try:
-            await BOT.send_message(
-                int(user["chat_id"]),
-                message=reply.message or None,
-                file=reply.media if reply.media else None,
-                parse_mode="html",
-                buttons=reply.buttons,
-                link_preview=reply.link_preview,
-                reply_to=None
-            )
-            success_users += 1
-        except Exception as e:
-            logger.error(f"ᴜsᴇʀ ʙʀᴏᴀᴅᴄᴀsᴛ ғᴀɪʟᴇᴅ {user.get('chat_id')}: {e}")
-            failed_users += 1
-
-    # Broadcast to groups
-    for group in groups:
-        group_id = group.get("group_id")
-        if not group_id:
-            failed_groups += 1
+        chat_id = user.get("chat_id")
+        if not chat_id or not str(chat_id).lstrip("-").isdigit():
+            logger.warning(f"Invalid user chat_id: {chat_id}")
             continue
 
         try:
-            still_in_group = await is_bot_still_in_group(group_id)
-            if not still_in_group:
+            await BOT.forward_messages(
+                int(chat_id),
+                messages=reply.id,
+                from_peer=event.chat_id
+            )
+            success_users += 1
+            await asyncio.sleep(0.2)
+
+        except FloodWaitError as e:
+            logger.warning(f"Flood wait for user {chat_id}, sleeping {e.seconds}s...")
+            await asyncio.sleep(e.seconds)
+            try:
+                await BOT.forward_messages(
+                    int(chat_id),
+                    messages=reply.id,
+                    from_peer=event.chat_id
+                )
+                success_users += 1
+            except Exception as e2:
+                failed_users += 1
+                logger.error(f"Retry failed for user {chat_id}: {e2}")
+
+        except Exception as e:
+            failed_users += 1
+            logger.error(f"ᴜsᴇʀs ʙʀᴏᴀᴅᴄᴀsᴛ ғᴀɪʟᴇᴅ {chat_id}: {e}")
+
+    for group in active_groups:
+        group_id = group.get("group_id")
+        if not group_id or not str(group_id).lstrip("-").isdigit():
+            logger.warning(f"Invalid group_id: {group_id}")
+            continue
+
+        try:
+            still_in = await is_bot_still_in_group(group_id)
+            if not still_in:
                 active_groups_collection.delete_one({"group_id": group_id})
-                logger.info(f"Rᴇᴍᴏᴠᴇᴅ ɪɴᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘ {group.get('group_name', 'Unknown')} ({group_id})")
+                logger.info(f"Rᴇᴍᴏᴠᴇᴅ ɪɴᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs {group.get('group_name', 'Unknown')} ({group_id})")
                 failed_groups += 1
                 continue
 
-            await BOT.send_message(
+            await BOT.forward_messages(
                 int(group_id),
-                message=reply.message or None,
-                file=reply.media if reply.media else None,
-                parse_mode="html",
-                buttons=reply.buttons,
-                link_preview=reply.link_preview,
-                reply_to=None
+                messages=reply.id,
+                from_peer=event.chat_id
             )
             success_groups += 1
+            await asyncio.sleep(0.2)
+
+        except FloodWaitError as e:
+            logger.warning(f"Flood wait for group {group_id}, sleeping {e.seconds}s...")
+            await asyncio.sleep(e.seconds)
+            try:
+                await BOT.forward_messages(
+                    int(group_id),
+                    messages=reply.id,
+                    from_peer=event.chat_id
+                )
+                success_groups += 1
+            except Exception as e2:
+                failed_groups += 1
+                logger.error(f"Retry failed for group {group_id}: {e2}")
+
         except Exception as e:
-            logger.error(f"ɢʀᴏᴜᴘ ʙʀᴏᴀᴅᴄᴀsᴛ ғᴀɪʟᴇᴅ {group.get('group_name', 'Unknown')} ({group_id}): {e}")
             failed_groups += 1
+            logger.error(f"ɢʀᴏᴜᴘs ʙʀᴏᴀᴅᴄᴀsᴛ ғᴀɪʟᴇᴅ {group.get('group_name', 'Unknown')}: {e}")
 
     await event.reply(
-        f"☘️ <b>Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇᴅ</b>\n\n"
-        f"👤 <b>Uꜱᴇʀs:</b> <code>{success_users}/{total_users}</code> sᴜᴄᴄᴇssғᴜʟ, <code>{failed_users}</code> ғᴀɪʟᴇᴅ.\n"
-        f"👥 <b>Gʀᴏᴜᴘs:</b> <code>{success_groups}/{total_groups}</code> ʙʀᴏᴀᴅᴄᴀsᴛᴇᴅ, <code>{failed_groups}</code> ғᴀɪʟᴇᴅ.",
-        parse_mode="html"
+        f"☘️ **Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇᴇᴅ**\n\n"
+        f"👤 **Uꜱᴇʀs:** `{success_users}/{total_users}` sᴜᴄᴄᴇssғᴜʟ, `{failed_users}` ғᴀɪʟᴇᴅ.\n"
+        f"👥 **Gʀᴏᴜᴘs:** `{success_groups}/{total_groups}` ʙʀᴏᴀᴅᴄᴀsᴛᴇᴅ, `{failed_groups}` ғᴀɪʟᴇᴅ."
     )

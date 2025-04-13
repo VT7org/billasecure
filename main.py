@@ -5,11 +5,19 @@ import logging
 import importlib.util
 import urllib3
 from pathlib import Path
-from config import BOT
+from config import BOT, MONGO_URI
+from pymongo import MongoClient
 
+# Logging setup
 logging.basicConfig(format='[%(levelname) 5s/%(asctime)s] %(name)s: %(message)s', level=logging.WARNING)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+# MongoDB setup
+client = MongoClient(MONGO_URI)
+db = client["billa_guardian"]
+active_groups_collection = db["active_groups"]
+
+# Plugin loader
 def load_plugins(plugin_name):
     path = Path(f"src/modules/{plugin_name}.py")
     try:
@@ -28,10 +36,27 @@ for name in files:
     plugin_name = patt.stem
     load_plugins(plugin_name)
 
-print("\nGuardify ɪꜱ ᴅᴇᴘʟᴏʏᴇᴅ ꜱᴜᴄᴄᴇꜱꜰᴜʟʟʏ")
+print("\nɢᴜᴀʀᴅɪғʏ ɪꜱ ᴅᴇᴘʟᴏʏᴇᴅ ꜱᴜᴄᴄᴇꜱꜰᴜʟʟʏ")
 
+# Auto clean inactive groups every 1 min
+async def auto_clean_inactive_groups():
+    while True:
+        active_groups = list(active_groups_collection.find({}))
+        for group in active_groups:
+            group_id = group.get("group_id")
+            if not group_id:
+                continue
+            try:
+                await BOT.get_entity(group_id)
+            except Exception:
+                active_groups_collection.delete_one({"group_id": group_id})
+                print(f"[Auto-Clean] Removed inactive group {group_id}")
+        await asyncio.sleep(60)
+
+# Main async runner
 async def main():
     tasks = [
+        auto_clean_inactive_groups(),
         BOT.run_until_disconnected()
     ]
     try:
@@ -39,6 +64,7 @@ async def main():
     except Exception as e:
         logging.error(f"ꜱᴛᴏʀᴍ ᴀɪ ꜰᴏᴜɴᴅ ᴀɴ ᴇʀʀᴏʀ ⚠️: {e}")
 
+# Start loop
 loop = asyncio.get_event_loop()
 try:
     loop.run_until_complete(main())

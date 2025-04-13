@@ -61,7 +61,6 @@ async def start(event):
 
 @BOT.on(events.NewMessage(pattern='/update'))
 async def update_and_restart(event):
-    from utils.sudo import get_sudo_users
     if event.sender_id != OWNER_ID and event.sender_id not in get_sudo_users():
         await event.reply("ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
@@ -74,15 +73,14 @@ async def update_and_restart(event):
     except Exception as e:
         await response.edit(f"ғᴀɪʟᴇᴅ ᴛᴏ ᴜᴘᴅᴀᴛᴇ ᴀɴᴅ ʀᴇsᴛᴀʀᴛ: {e}")
 
-@BOT.on(events.NewMessage(pattern='/stop'))
+@BOT.on(events.NewMessage(pattern='/break'))
 async def stop_bot(event):
-    from utils.sudo import get_sudo_users
-    if event.sender_id != OWNER_ID and event.sender_id not in get_sudo_users():
+    if event.sender_id != OWNER_ID and event.sender_id not in SUDO_USERS:
         await event.reply("ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
 
     response = await event.reply("sᴛᴏᴘᴘɪɴɢ ʙᴏᴛ...")
     try:
-        os.system(f"kill -9 {os.getpid()}")
+        os.kill(os.getpid(), 9)
     except Exception as e:
         await response.edit(f"ғᴀɪʟᴇᴅ ᴛᴏ sᴛᴏᴘ ʙᴏᴛ: {e}")

@@ -16,7 +16,7 @@ FLASK_PID=$!
 trap "echo 'Stopping...'; kill $FLASK_PID; exit" SIGINT SIGTERM
 
 # Start the bot (blocking)
-python3 main.py
+python3 -m main.py
 
 # Clean up Flask process if bot exits
 kill $FLASK_PID

@@ -59,6 +59,18 @@ async def track_groups(event):
         upsert=True
     )
 
+
+@BOT.on(events.ChatAction)
+async def monitor_bot_leave(event):
+    if event.user_joined or event.user_added:
+        return  # We're only watching for bot removal
+
+    if event.user_id == (await BOT.get_me()).id and event.left:
+        # Bot has been removed from the group
+        group_id = event.chat_id
+        active_groups_collection.delete_one({"group_id": group_id})
+        logger.info(f"Bot removed from group {group_id}, cleaned from DB.")
+
 # Check for edited messages
 @BOT.on(events.MessageEdited)
 async def check_edit(event):
@@ -490,7 +502,7 @@ async def send_stats(event):
         await event.reply("Fᴀɪʟᴇᴅ ᴛᴏ ғᴇᴛᴄʜ sᴛᴀs.")
 
 # List active groups
-@BOT.on(events.NewMessage(pattern='/activegroups'))
+@BOT.on(events.NewMessage(pattern='/activegc'))
 async def list_active_groups(event):
     user = await event.get_sender()
 
@@ -498,21 +510,37 @@ async def list_active_groups(event):
         await event.reply("Yᴏᴜ ᴅᴏɴ'ᴛ ʜᴀᴠᴇ ᴘᴇʀᴍɪssɪᴏɴ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
 
-    active_groups_from_db = fetch_active_groups_from_db()
+    active_groups = list(active_groups_collection.find({}))
+    cleaned_groups = []
+    removed_count = 0
 
-    if not active_groups_from_db:
-        await event.reply("Tʜᴇ ʙɪʟʟᴀ ᴇɢ ɪs ɴᴏᴛ ᴀᴄᴛɪᴠᴇ ɪɴ ᴀɴʏ ɢʀᴏᴜᴘs ᴏʀ ғᴀɪʟᴇᴅ ᴛᴏ ᴄᴏɴɴᴇᴄᴛ ᴛᴏ MᴏɴɢᴏDB.")
-        return
+    for group in active_groups:
+        group_id = group.get("group_id")
+        if not group_id:
+            continue
 
-    group_list_msg = "Aᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs ᴡʜᴇʀᴇ ᴛʜᴇ ʙɪʟʟᴀ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ:\n"
-    for group in active_groups_from_db:
+        try:
+            await BOT.get_entity(group_id)
+            cleaned_groups.append(group)
+        except Exception:
+            # Remove from DB if bot not in group
+            active_groups_collection.delete_one({"group_id": group_id})
+            removed_count += 1
+
+    if not cleaned_groups:
+        return await event.reply("Tʜᴇ ʙɪʟʟᴀ ɪs ɴᴏᴛ ᴀᴄᴛɪᴠᴇ ɪɴ ᴀɴʏ ɢʀᴏᴜᴘs (ᴀʟʟ ᴍɪɢʜᴛ ʜᴀᴠᴇ ʀᴇᴍᴏᴠᴇᴅ ᴛʜᴇ ʙᴏᴛ).")
+
+    group_list_msg = "Aᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs ᴡʜᴇʀᴇ ᴛʜᴇ ʙɪʟʟᴀ ɪs ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ:\n\n"
+    for group in cleaned_groups:
         group_name = group.get("group_name", "Unknown Group")
         invite_link = group.get("invite_link", "ɴᴏ ɪɴᴠɪᴛᴇ ʟɪɴᴋ ᴀᴠᴀɪʟᴀʙʟᴇ")
 
         if invite_link.startswith("http"):
-            group_list_msg += f"- <a href='{invite_link}'>[{group_name}]</a>\n"
+            group_list_msg += f"• <a href='{invite_link}'>[{group_name}]</a>\n"
         else:
-            group_list_msg += f"- {group_name}\n"
+            group_list_msg += f"• {group_name}\n"
+
+    group_list_msg += f"\n🧹 `{removed_count}` ɪɴᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs ᴡᴇʀᴇ ʀᴇᴍᴏᴠᴇᴅ ꜰʀᴏᴍ ᴛʀᴀᴄᴋɪɴɢ."
 
     await event.reply(group_list_msg, parse_mode='html')
     

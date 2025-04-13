@@ -4,6 +4,7 @@ import asyncio
 import logging
 import importlib.util
 import urllib3
+import signal
 from pathlib import Path
 from config import BOT, MONGO_URI
 from pymongo import MongoClient
@@ -50,23 +51,35 @@ async def auto_clean_inactive_groups():
                 await BOT.get_entity(group_id)
             except Exception:
                 active_groups_collection.delete_one({"group_id": group_id})
-                print(f"[Auto-Clean] Removed inactive group {group_id}")
+                print(f"[Auto-Clean] Rᴇᴍᴏᴠᴇᴅ ɪɴᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘ {group_id}")
         await asyncio.sleep(60)
+
+# Graceful shutdown support
+shutdown_event = asyncio.Event()
+
+def handle_shutdown():
+    print("\n[ꜱʜᴜᴛᴅᴏᴡɴ] ᴄᴀᴜɢʜᴛ ꜱɪɢɴᴀʟ, ᴄʟᴇᴀɴɪɴɢ ᴜᴘ...")
+    shutdown_event.set()
+
+for sig in (signal.SIGINT, signal.SIGTERM):
+    signal.signal(sig, lambda s, f: handle_shutdown())
 
 # Main async runner
 async def main():
-    tasks = [
-        auto_clean_inactive_groups(),
-        BOT.run_until_disconnected()
-    ]
-    try:
-        await asyncio.gather(*tasks)
-    except Exception as e:
-        logging.error(f"ꜱᴛᴏʀᴍ ᴀɪ ꜰᴏᴜɴᴅ ᴀɴ ᴇʀʀᴏʀ ⚠️: {e}")
+    clean_task = asyncio.create_task(auto_clean_inactive_groups())
+    bot_task = asyncio.create_task(BOT.run_until_disconnected())
+    await shutdown_event.wait()
+
+    print("[ꜱʜᴜᴛᴅᴏᴡɴ] ꜱᴛᴏᴘᴘɪɴɢ ᴛᴀꜱᴋꜱ...")
+    clean_task.cancel()
+    await BOT.disconnect()
+
+    print("[ꜱʜᴜᴛᴅᴏᴡɴ] ᴇxɪᴛ ᴄᴏᴍᴘʟᴇᴛᴇ.")
 
 # Start loop
 loop = asyncio.get_event_loop()
 try:
     loop.run_until_complete(main())
 finally:
+    loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()

@@ -86,4 +86,4 @@ async def broadcast(event):
         f"☘️ **Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇᴇᴅ**\n\n"
         f"👤 **Uꜱᴇʀs:** `{success_users}/{total_users}` sᴜᴄᴄᴇssғᴜʟ, `{failed_users}` ғᴀɪʟᴇᴅ.\n"
         f"👥 **Gʀᴏᴜᴘs:** `{success_groups}/{total_groups}` ʙʀᴏᴀᴅᴄᴀsᴛᴇᴅ, `{failed_groups}` ғᴀɪʟᴇᴅ."
-            )
+        )

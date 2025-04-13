@@ -12,12 +12,20 @@ logger = logging.getLogger(__name__)
 client = MongoClient(MONGO_URI)
 db = client["billa_guardian"]
 users_collection = db["users"]
-groups_collection = db["groups"]
+active_groups_collection = db["active_groups"]  # For groups the bot is active in
 
 # Combine config SUDO and Mongo users
 def get_sudo_users():
     mongo_users = [user["user_id"] for user in users_collection.find({"user_id": {"$exists": True}})]
     return set(mongo_users + list(SUDO_USERS))
+
+# Check if bot is still in the group
+async def is_bot_still_in_group(group_id):
+    try:
+        await BOT.get_entity(group_id)
+        return True
+    except Exception:
+        return False
 
 @BOT.on(events.NewMessage(pattern="/broadcast"))
 async def broadcast(event):
@@ -29,14 +37,14 @@ async def broadcast(event):
         return await event.reply("❗Rᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ʏᴏᴜ ᴡᴀɴᴛ ᴛᴏ ʙʀᴏᴀᴅᴄᴀsᴛ.")
 
     users = list(users_collection.find())
-    groups = list(groups_collection.find())
+    active_groups = list(active_groups_collection.find())
 
     total_users = len(users)
-    total_groups = len(groups)
+    total_groups = len(active_groups)
     success_users, failed_users = 0, 0
     success_groups, failed_groups = 0, 0
 
-    await event.reply(f"📡 Sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ `{total_users}` ᴜsᴇʀs ᴀɴᴅ `{total_groups}` ɢʀᴏᴜᴘs...")
+    await event.reply(f"📡 Sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ `{total_users}` ᴜsᴇʀs ᴀɴᴅ `{total_groups}` ᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs...")
 
     for user in users:
         try:
@@ -48,22 +56,34 @@ async def broadcast(event):
             success_users += 1
         except Exception as e:
             failed_users += 1
-            logger.error(f"User broadcast fail {user['chat_id']}: {e}")
+            logger.error(f"User broadcast fail {user.get('chat_id')}: {e}")
 
-    for group in groups:
+    for group in active_groups:
         try:
+            group_id = group.get("group_id")
+            if not group_id:
+                raise ValueError("Missing group_id")
+
+            still_in = await is_bot_still_in_group(group_id)
+            if not still_in:
+                # Clean up if bot was removed or left
+                active_groups_collection.delete_one({"group_id": group_id})
+                logger.info(f"Removed inactive group {group.get('group_name', 'Unknown')} ({group_id})")
+                failed_groups += 1
+                continue
+
             await BOT.forward_messages(
-                int(group["chat_id"]),
+                int(group_id),
                 messages=reply.id,
                 from_peer=event.chat_id
             )
             success_groups += 1
         except Exception as e:
             failed_groups += 1
-            logger.error(f"Group broadcast fail {group['chat_id']}: {e}")
+            logger.error(f"Group broadcast fail {group.get('group_name', 'Unknown')}: {e}")
 
     await event.reply(
         f"✅ **Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇ**\n\n"
         f"👤 **Uꜱᴇʀs:** `{success_users}/{total_users}` sᴜᴄᴄᴇssғᴜʟ, `{failed_users}` ғᴀɪʟᴇᴅ.\n"
         f"👥 **Gʀᴏᴜᴘs:** `{success_groups}/{total_groups}` sᴜᴄᴄᴇssғᴜʟ, `{failed_groups}` ғᴀɪʟᴇᴅ."
-        )
+            )

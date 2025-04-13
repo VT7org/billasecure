@@ -94,8 +94,8 @@ async def slang(event):
                         await event.delete()  # Delete message if slang word is found
                     except Exception:
                         pass
-                    # Replace slang word with spoiler format
-                    sentence = sentence.replace(word, f'||{word}||')
+                    # Replace slang word with spoiler format including space before and after
+                    sentence = sentence.replace(word, f'|| {word} ||')
 
             if isslang and SPOILER:
                 name = (await event.get_sender()).first_name

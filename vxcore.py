@@ -28,12 +28,8 @@ def signal_handler(sig, frame):
     logger.info("[ᴠx ᴀɪ] ʀᴇᴄᴇɪᴠᴇᴅ ꜱʜᴜᴛᴅᴏᴡɴ ꜱɪɢɴᴀʟ, ɢʀᴀᴄᴇꜰᴜʟʟʏ ᴛᴇʀᴍɪɴᴀᴛɪɴɢ 🛑")
     sys.exit(0)
 
-if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
+def run_server():
     app = create_app()
-
     port = int(os.environ.get("PORT", 8080))
     host = os.environ.get("HOST", "0.0.0.0")
     debug = bool(os.environ.get("DEBUG", False))
@@ -44,3 +40,8 @@ if __name__ == "__main__":
         app.run(host=host, port=port, debug=debug)
     except Exception as e:
         logger.error(f"[ᴠx ᴀɪ] ꜰᴀɪʟᴇᴅ ᴛᴏ ꜱᴛᴀʀᴛ ᴀᴘᴘ ❌: {e}")
+
+if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    run_server()

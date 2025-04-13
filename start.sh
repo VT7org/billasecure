@@ -1,15 +1,22 @@
 #!/bin/bash
 
-# Exit if any command fails
+# Exit on error
 set -e
 
-# Load environment variables from .env if it exists
+# Load env vars
 if [ -f .env ]; then
   export $(grep -v '^#' .env | xargs)
 fi
 
-# Start the Flask API server (vxcore) in the background
+# Start Flask server in background
 python3 vxcore.py &
+FLASK_PID=$!
 
-# Start the Telegram bot
+# Trap Ctrl+C (SIGINT) to stop both
+trap "echo 'Stopping...'; kill $FLASK_PID; exit" SIGINT SIGTERM
+
+# Start the bot (this will block)
 python3 main.py
+
+# Cleanup after bot exits
+kill $FLASK_PID

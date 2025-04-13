@@ -30,7 +30,7 @@ async def is_bot_still_in_group(group_id):
 @BOT.on(events.NewMessage(pattern="/broadcast"))
 async def broadcast(event):
     if event.sender_id != OWNER_ID and event.sender_id not in get_sudo_users():
-        return await event.reply("❌ Yᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
+        return await event.reply("🍁 Yᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
 
     reply = await event.get_reply_message()
     if not reply:
@@ -44,7 +44,7 @@ async def broadcast(event):
     success_users, failed_users = 0, 0
     success_groups, failed_groups = 0, 0
 
-    await event.reply(f"📡 Sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ `{total_users}` ᴜsᴇʀs ᴀɴᴅ `{total_groups}` ᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs...")
+    await event.reply(f"🍃 Sᴛᴀʀᴛɪɴɢ ʙʀᴏᴀᴅᴄᴀsᴛ ᴛᴏ `{total_users}` ᴜsᴇʀs ᴀɴᴅ `{total_groups}` ᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs...")
 
     for user in users:
         try:
@@ -56,7 +56,7 @@ async def broadcast(event):
             success_users += 1
         except Exception as e:
             failed_users += 1
-            logger.error(f"User broadcast fail {user.get('chat_id')}: {e}")
+            logger.error(f"ᴜsᴇʀs ʙʀᴏᴀᴅᴄᴀsᴛ ғᴀɪʟᴇᴅ {user.get('chat_id')}: {e}")
 
     for group in active_groups:
         try:
@@ -68,7 +68,7 @@ async def broadcast(event):
             if not still_in:
                 # Clean up if bot was removed or left
                 active_groups_collection.delete_one({"group_id": group_id})
-                logger.info(f"Removed inactive group {group.get('group_name', 'Unknown')} ({group_id})")
+                logger.info(f"Rᴇᴍᴏᴠᴇᴅ ɪɴᴀᴄᴛɪᴠᴇ ɢʀᴏᴜᴘs {group.get('group_name', 'Unknown')} ({group_id})")
                 failed_groups += 1
                 continue
 
@@ -80,10 +80,10 @@ async def broadcast(event):
             success_groups += 1
         except Exception as e:
             failed_groups += 1
-            logger.error(f"Group broadcast fail {group.get('group_name', 'Unknown')}: {e}")
+            logger.error(f"ɢʀᴏᴜᴘs ʙʀᴏᴀᴅᴄᴀsᴛ ғᴀɪʟᴇᴅ {group.get('group_name', 'Unknown')}: {e}")
 
     await event.reply(
-        f"✅ **Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇ**\n\n"
+        f"☘️ **Bʀᴏᴀᴅᴄᴀsᴛ Cᴏᴍᴘʟᴇᴛᴇᴇᴅ**\n\n"
         f"👤 **Uꜱᴇʀs:** `{success_users}/{total_users}` sᴜᴄᴄᴇssғᴜʟ, `{failed_users}` ғᴀɪʟᴇᴅ.\n"
-        f"👥 **Gʀᴏᴜᴘs:** `{success_groups}/{total_groups}` sᴜᴄᴄᴇssғᴜʟ, `{failed_groups}` ғᴀɪʟᴇᴅ."
+        f"👥 **Gʀᴏᴜᴘs:** `{success_groups}/{total_groups}` ʙʀᴏᴀᴅᴄᴀsᴛᴇᴅ, `{failed_groups}` ғᴀɪʟᴇᴅ."
             )

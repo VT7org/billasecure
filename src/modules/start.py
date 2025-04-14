@@ -1,5 +1,6 @@
 from telethon import events
 from telethon.tl.custom import Button
+from broadcast import get_sudo_users
 from config import BOT, SUDO_USERS, OWNER_ID, MONGO_URI
 from pymongo import MongoClient
 import os
@@ -10,7 +11,7 @@ import logging
 client = MongoClient(MONGO_URI)
 db = client["billa_guardian"]
 users_collection = db["users"]
-groups_collection = db["groups"]
+groups_collection = db["active_groups"]
 
 # Logging
 logging.basicConfig(level=logging.INFO)

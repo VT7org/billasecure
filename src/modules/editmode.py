@@ -59,18 +59,6 @@ async def track_groups(event):
         upsert=True
     )
 
-
-@BOT.on(events.ChatAction)
-async def monitor_bot_leave(event):
-    if event.user_joined or event.user_added:
-        return  # We're only watching for bot removal
-
-    if event.user_id == (await BOT.get_me()).id and event.left:
-        # Bot has been removed from the group
-        group_id = event.chat_id
-        active_groups_collection.delete_one({"group_id": group_id})
-        logger.info(f"Bot removed from group {group_id}, cleaned from DB.")
-
 # Check for edited messages
 @BOT.on(events.MessageEdited)
 async def check_edit(event):
@@ -78,9 +66,9 @@ async def check_edit(event):
         chat = await event.get_chat()
         user = await event.get_sender()
 
-        # If no message or no edit_date, skip (sometimes not a real edit)
-        if not event.message or not event.message.edit_date:
-            return
+        # Skip if it's not a text-based edit (e.g., reactions, views)
+        if not event.message or not event.message.edit_date or not event.message.raw_text:
+           return
 
         # Detect if message was sent via a channel or anonymously
         is_channel_msg = getattr(event.message, "post_author", None) is not None or getattr(event.message, "sender_id", None) is None

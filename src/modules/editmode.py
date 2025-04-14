@@ -3,6 +3,7 @@ from telethon.tl.functions.channels import GetFullChannelRequest
 from telethon.tl.functions.messages import ExportChatInviteRequest
 from telethon.tl.types import PeerChannel, PeerUser
 from telethon.errors import ChatAdminRequiredError
+from collections import defaultdict
 from pymongo import MongoClient
 from config import MONGO_URI, DB_NAME, OWNER_ID, SUDO_USERS, SUPPORT_ID
 from config import BOT
@@ -59,6 +60,12 @@ async def track_groups(event):
         upsert=True
     )
 
+# Cache messages when they are first sent
+@BOT.on(events.NewMessage)
+async def cache_message(event):
+    if event.message and event.message.text:
+        message_cache[(event.chat_id, event.id)] = event.message.text
+
 # Check for edited messages
 @BOT.on(events.MessageEdited)
 async def check_edit(event):
@@ -66,11 +73,17 @@ async def check_edit(event):
         chat = await event.get_chat()
         user = await event.get_sender()
 
-        # Skip if it's not a text-based edit (e.g., reactions, views)
-        if not event.message or not event.message.edit_date or not event.message.raw_text:
-           return
+        if not event.message or not event.message.edit_date:
+            return
 
-        # Detect if message was sent via a channel or anonymously
+        original_text = message_cache.get((event.chat_id, event.id), "")
+        new_text = event.message.text or ""
+
+        if original_text == new_text:
+            return  # Not a real edit (reaction or metadata)
+
+        message_cache[(event.chat_id, event.id)] = new_text
+
         is_channel_msg = getattr(event.message, "post_author", None) is not None or getattr(event.message, "sender_id", None) is None
 
         if is_channel_msg:

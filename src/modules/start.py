@@ -1,6 +1,5 @@
 from telethon import events
 from telethon.tl.custom import Button
-from broadcast import get_sudo_users
 from config import BOT, SUDO_USERS, OWNER_ID, MONGO_URI
 from pymongo import MongoClient
 import os
@@ -62,7 +61,7 @@ async def start(event):
 
 @BOT.on(events.NewMessage(pattern='/update'))
 async def update_and_restart(event):
-    if event.sender_id != OWNER_ID and event.sender_id not in get_sudo_users():
+    if event.sender_id != OWNER_ID and event.sender_id not in SUDO_USERS:
         await event.reply("ʏᴏᴜ ᴀʀᴇ ɴᴏᴛ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.")
         return
 

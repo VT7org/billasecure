@@ -67,7 +67,7 @@ async def cache_message(event):
     if event.message and event.message.text:
         message_cache[(event.chat_id, event.id)] = event.message.text
 
-# Check for edited messages
+
 @BOT.on(events.MessageEdited)
 async def check_edit(event):
     try:
@@ -77,11 +77,11 @@ async def check_edit(event):
         if not event.message or not event.message.edit_date:
             return
 
-        original_text = message_cache.get((event.chat_id, event.id), "")
-        new_text = event.message.text or ""
+        old_text = message_cache.get((event.chat_id, event.id))
+        new_text = event.message.text
 
-        if original_text == new_text:
-            return  # Not a real edit (reaction or metadata)
+        if old_text is not None and old_text == new_text:
+            return
 
         message_cache[(event.chat_id, event.id)] = new_text
 
@@ -102,14 +102,11 @@ async def check_edit(event):
             return
 
         if user is None:
-            error_msg = (
-                "<blockquote><b>⚠️ ꜰᴀɪʟᴇᴅ ᴛᴏ ʀᴇᴛʀɪᴇᴠᴇ ᴛʜᴇ ꜱᴇɴᴅᴇʀ ᴏꜰ ᴛʜᴇ ᴇᴅɪᴛᴇᴅ ᴍᴇꜱꜱᴀɢᴇ.</b></blockquote>\n"
-                f"<blockquote><b>ᴄʜᴀᴛ ɪᴅ: <code>{chat.id}</code></b></blockquote>\n"
-                f"<blockquote><b>ᴍᴇꜱꜱᴀɢᴇ ɪᴅ: <code>{event.id}</code></b></blockquote>\n"
-                "<blockquote><b>ᴛʜɪꜱ ᴍɪɢʜᴛ ʙᴇ ᴅᴜᴇ ᴛᴏ ᴀ ᴍᴇꜱꜱᴀɢᴇ ꜰʀᴏᴍ ᴀ ᴄʜᴀɴɴᴇʟ, ᴀɴᴏɴʏᴍᴏᴜꜱ ᴀᴅᴍɪɴ, ᴏʀ ᴅᴇʟᴇᴛᴇᴅ ᴀᴄᴄᴏᴜɴᴛ.</b></blockquote>"
+            await BOT.send_message(
+                SUPPORT_ID,
+                f"<blockquote><b>⚠️ ꜰᴀɪʟᴇᴅ ᴛᴏ ʀᴇᴛʀɪᴇᴠᴇ ᴛʜᴇ ꜱᴇɴᴅᴇʀ ᴏꜰ ᴛʜᴇ ᴇᴅɪᴛᴇᴅ ᴍᴇꜱꜱᴀɢᴇ.\nᴄʜᴀᴛ ɪᴅ: <code>{chat.id}</code>\nᴍᴇꜱꜱᴀɢᴇ ɪᴅ: <code>{event.id}</code></b></blockquote>",
+                parse_mode='html'
             )
-            logger.error(error_msg)
-            await BOT.send_message(SUPPORT_ID, error_msg, parse_mode='html')
             return
 
         user_id = user.id
@@ -123,8 +120,7 @@ async def check_edit(event):
         if is_owner or is_sudo or is_authorized:
             await BOT.send_message(
                 SUPPORT_ID,
-                f"<blockquote>Aᴜᴛʜᴏʀɪᴢᴇᴅ ᴜsᴇʀ {user_mention} ᴇᴅɪᴛᴇᴅ ᴀ ᴍᴇssᴀɢᴇ ɪɴ ᴄʜᴀᴛ <code>{chat.id}</code>.</blockquote>\n"
-                "<blockquote><b>Nᴏ ᴀᴄᴛɪᴏɴ ᴡᴀs ᴛᴀᴋᴇɴ.</b></blockquote>",
+                f"<blockquote>Aᴜᴛʜᴏʀɪᴢᴇᴅ ᴜsᴇʀ {user_mention} ᴇᴅɪᴛᴇᴅ ᴀ ᴍᴇssᴀɢᴇ ɪɴ <code>{chat.id}</code>.\n<b>Nᴏ ᴀᴄᴛɪᴏɴ ᴡᴀs ᴛᴀᴋᴇɴ.</b></blockquote>",
                 parse_mode='html'
             )
             return
@@ -136,20 +132,17 @@ async def check_edit(event):
                 user_role = "admin" if chat_member.is_admin else "creator"
                 await BOT.send_message(
                     SUPPORT_ID,
-                    f"<blockquote>Usᴇʀ {user_mention} is an <b>{user_role}</b> ɪɴ ᴄʜᴀᴛ <code>{chat.id}</code>.</blockquote>\n"
-                    "<blockquote><b>Nᴏ ᴅᴇʟᴇᴛɪᴏɴ ᴡᴀs ᴘᴇʀғᴏʀᴍᴇᴅ.</b></blockquote>",
+                    f"<blockquote>Usᴇʀ {user_mention} is an <b>{user_role}</b> ɪɴ ᴄʜᴀᴛ <code>{chat.id}</code>.\n<b>Nᴏ ᴅᴇʟᴇᴛɪᴏɴ ᴡᴀs ᴘᴇʀғᴏʀᴍᴇᴅ.</b></blockquote>",
                     parse_mode='html'
                 )
                 return
 
         except Exception as e:
-            error_msg = (
-                "<blockquote><b>⚠️ ʙᴏᴛ ɴᴇᴇᴅꜱ ᴀᴅᴍɪɴ ʀɪɢʜᴛꜱ ᴛᴏ ᴄʜᴇᴄᴋ ᴇᴅɪᴛꜱ</b></blockquote>\n"
-                f"<blockquote><b>ᴄʜᴀᴛ ɪᴅ: <code>{chat.id}</code></b></blockquote>\n"
-                f"<blockquote><b>ᴇʀʀᴏʀ: <code>{e}</code></b></blockquote>"
+            await BOT.send_message(
+                SUPPORT_ID,
+                f"<blockquote><b>⚠️ ʙᴏᴛ ɴᴇᴇᴅꜱ ᴀᴅᴍɪɴ ʀɪɢʜᴛꜱ ᴛᴏ ᴄʜᴇᴄᴋ ᴇᴅɪᴛꜱ\nᴄʜᴀᴛ ɪᴅ: <code>{chat.id}</code>\nᴇʀʀᴏʀ: <code>{e}</code></b></blockquote>",
+                parse_mode='html'
             )
-            logger.error(error_msg)
-            await BOT.send_message(SUPPORT_ID, error_msg, parse_mode='html')
             return
 
         try:
@@ -157,35 +150,29 @@ async def check_edit(event):
 
             await BOT.send_message(
                 chat.id,
-                f"<blockquote><b>{user_mention} Jᴜsᴛ ᴇᴅɪᴛᴇᴅ ᴀ ᴍᴇssᴀɢᴇ.</b></blockquote>\n"
-                "<blockquote><b>ɪ ʜᴀᴠᴇ ᴅᴇʟᴇᴛᴇᴅ ɪᴛ.</b></blockquote>",
+                f"<blockquote><b>{user_mention} Jᴜsᴛ ᴇᴅɪᴛᴇᴅ ᴀ ᴍᴇssᴀɢᴇ.\nɪ ʜᴀᴠᴇ ᴅᴇʟᴇᴛᴇᴅ ɪᴛ.</b></blockquote>",
                 parse_mode='html'
             )
 
             await BOT.send_message(
                 SUPPORT_ID,
-                f"<blockquote><b>Dᴇʟᴇᴛᴇᴅ ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇ ғʀᴏᴍ ᴜɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴜsᴇʀ {user_mention}</b></blockquote>\n"
-                f"<blockquote><b>ɪɴ ᴄʜᴀᴛ <code>{chat.id}</code>.</b></blockquote>",
+                f"<blockquote><b>Dᴇʟᴇᴛᴇᴅ ᴇᴅɪᴛᴇᴅ ᴍᴇssᴀɢᴇ ғʀᴏᴍ ᴜɴᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴜsᴇʀ {user_mention}\nɪɴ ᴄʜᴀᴛ <code>{chat.id}</code>.</b></blockquote>",
                 parse_mode='html'
             )
 
         except Exception as e:
-            error_msg = (
-                "<blockquote><b>⚠️ ꜰᴀɪʟᴇᴅ ᴛᴏ ᴅᴇʟᴇᴛᴇ ᴇᴅɪᴛᴇᴅ ᴍᴇꜱꜱᴀɢᴇ.</b></blockquote>\n"
-                f"<blockquote><b>ᴄʜᴀᴛ ɪᴅ: <code>{chat.id}</code></b></blockquote>\n"
-                f"<blockquote><b>ᴍᴇꜱꜱᴀɢᴇ ɪᴅ: <code>{event.id}</code></b></blockquote>\n"
-                f"<blockquote><b>ᴇʀʀᴏʀ: <code>{e}</code></b></blockquote>"
+            await BOT.send_message(
+                SUPPORT_ID,
+                f"<blockquote><b>⚠️ ꜰᴀɪʟᴇᴅ ᴛᴏ ᴅᴇʟᴇᴛᴇ ᴇᴅɪᴛᴇᴅ ᴍᴇꜱꜱᴀɢᴇ.\nᴄʜᴀᴛ ɪᴅ: <code>{chat.id}</code>\nᴍᴇꜱꜱᴀɢᴇ ɪᴅ: <code>{event.id}</code>\nᴇʀʀᴏʀ: <code>{e}</code></b></blockquote>",
+                parse_mode='html'
             )
-            logger.error(error_msg)
-            await BOT.send_message(SUPPORT_ID, error_msg, parse_mode='html')
 
     except Exception as e:
-        error_msg = (
-            "<blockquote><b>⚠️ ᴜɴʜᴀɴᴅʟᴇᴅ ᴇxᴄᴇᴘᴛɪᴏɴ ɪɴ ᴄʜᴇᴄᴋ_ᴇᴅɪᴛ.</b></blockquote>\n"
-            f"<blockquote><b>ᴇʀʀᴏʀ: <code>{e}</code></b></blockquote>"
+        await BOT.send_message(
+            SUPPORT_ID,
+            f"<blockquote><b>⚠️ ᴜɴʜᴀɴᴅʟᴇᴅ ᴇxᴄᴇᴘᴛɪᴏɴ ɪɴ ᴄʜᴇᴄᴋ_ᴇᴅɪᴛ.\nᴇʀʀᴏʀ: <code>{e}</code></b></blockquote>",
+            parse_mode='html'
         )
-        logger.error(error_msg)
-        await BOT.send_message(SUPPORT_ID, error_msg, parse_mode='html')
 
 
 @BOT.on(events.ChatAction())

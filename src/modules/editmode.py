@@ -7,12 +7,13 @@ from collections import defaultdict
 from pymongo import MongoClient
 from config import MONGO_URI, DB_NAME, OWNER_ID, SUDO_USERS, SUPPORT_ID
 from config import BOT
-import time
 from src.status import *
+import time
 import re
 import html
 import logging
 
+message_cache = {}
 # Initialize logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)

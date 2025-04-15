@@ -68,10 +68,12 @@ async def update_and_restart(event):
     response = await event.reply("ᴜᴘᴅᴀᴛɪɴɢ ᴀɴᴅ ʀᴇsᴛᴀʀᴛɪɴɢ...")
     try:
         os.system("git pull")
+        os.system("pkill -f main.py")
         os.system(f"kill -9 {os.getpid()} && bash start.sh")
         await response.edit("ᴜᴘᴅᴀᴛᴇᴅ ᴀɴᴅ ʀᴇsᴛᴀʀᴛᴇᴅ ʟᴏᴄᴀʟʟʏ!")
     except Exception as e:
         await response.edit(f"ғᴀɪʟᴇᴅ ᴛᴏ ᴜᴘᴅᴀᴛᴇ ᴀɴᴅ ʀᴇsᴛᴀʀᴛ: {e}")
+
 
 @BOT.on(events.NewMessage(pattern='/break'))
 async def stop_bot(event):
@@ -81,6 +83,7 @@ async def stop_bot(event):
 
     response = await event.reply("sᴛᴏᴘᴘɪɴɢ ʙᴏᴛ...")
     try:
+        os.system("pkill -f main.py")
         os.kill(os.getpid(), 9)
     except Exception as e:
         await response.edit(f"ғᴀɪʟᴇᴅ ᴛᴏ sᴛᴏᴘ ʙᴏᴛ: {e}")

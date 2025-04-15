@@ -18,7 +18,7 @@ edit_msg = f"""
 
 🔸 /unauth - ᴜɴᴀᴜᴛʜ ᴀ ᴜꜱᴇʀ ᴛᴏ ᴀʟʟᴏᴡ ᴍᴇꜱꜱᴀɢᴇ !!
 
-🔸 /authusers - ꜱʜᴏᴡꜱ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴜꜱᴇʀꜱ ɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ !! (ᴏᴡɴᴇʀ ᴏɴʟʏ)
+🔸 /authlist - ꜱʜᴏᴡꜱ ᴀᴜᴛʜᴏʀɪᴢᴇᴅ ᴜꜱᴇʀꜱ ɪɴ ᴛʜᴇ ɢʀᴏᴜᴘ !! (ᴏᴡɴᴇʀ ᴏɴʟʏ)
 
 🔸 /atag -  ᴛᴏ ᴄʀᴇᴀᴛᴇ ᴍᴇɴᴛɪᴏɴs ᴏʀ ᴛᴀɢ ᴀᴅᴍɪɴs ᴏɴʟʏ ᴏғ ᴛʜᴀᴛ ɢʀᴏᴜᴘ !!
 
@@ -37,8 +37,8 @@ edit_msg = f"""
 
 START_OP = [
     [
-      Button.inline("• ᴍᴇᴅɪᴀ ɢᴜᴀʀᴅx •", data="media"),
-      Button.inline("• ᴇᴅɪᴛ ɢᴜᴀʀᴅx •", data="edit")
+      Button.inline("• ᴍᴇᴅɪᴀ ɢᴜᴀʀᴅ x •", data="media"),
+      Button.inline("• ᴇᴅɪᴛ ɢᴜᴀʀᴅ x •", data="edit")
     ],
     [
       Button.url("ᴜᴘᴅᴀᴛᴇꜱ", "https://t.me/BillaSpace")
